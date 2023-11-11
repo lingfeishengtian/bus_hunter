@@ -228,15 +228,43 @@ class _MyHomePageState extends State<MyHomePage> {
             ]));
   }
 
+  var scaffoldKey = GlobalKey<ScaffoldState>();
+
   @override
   Widget build(BuildContext context) {
     return Stack(children: [
       Scaffold(
+        key: scaffoldKey,
         floatingActionButtonLocation: FloatingActionButtonLocation.miniStartTop,
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {},
-          child: const Icon(Icons.arrow_back),
-        ),
+        // floatingActionButton: FloatingActionButton(
+        //   onPressed: () {
+        //     scaffoldKey.currentState?.openDrawer();
+        //   },
+        //   child: const Icon(Icons.menu),
+        // ),
+        drawer: Drawer(
+            shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.only(
+                    topRight: Radius.circular(20),
+                    bottomRight: Radius.circular(20))),
+            child: ListView(
+              children: [
+                DrawerHeader(
+                  child: Text(
+                    AppLocalizations.of(context)!.homePageTitle,
+                    style: Theme.of(context).textTheme.displaySmall,
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.settings),
+                  title: const Text('shezhi'),
+                  enabled: true,
+                  onTap: () {
+                    print('moew');
+                  },
+                )
+              ],
+            )),
         body: SlidingUpPanel(
           backdropEnabled: true,
           panelBuilder: (sc) => _buildPanel(sc),
