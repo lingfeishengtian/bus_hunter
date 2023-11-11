@@ -4,58 +4,51 @@ import 'package:flutter/material.dart';
 
 class AppleMaps extends StatelessWidget {
   final Set<Polyline> currRoute;
-  late final AppleMapController mapController;
+  final Set<Circle> currBusMarkers;
+  final Color routeColor;
+  final Function(AppleMapController) onMapCreated;
 
-  // Set<Polyline> polylines = {};
-
-  AppleMaps(List<BusPoint> bPoints, {super.key})
+  AppleMaps(List<BusPoint> bPoints, List<Bus> buses,
+      {super.key, required this.routeColor, required this.onMapCreated})
       : currRoute = {
           Polyline(
               polylineId: PolylineId("a"),
+              color: routeColor,
+              width: 5,
               points:
                   bPoints.map((e) => LatLng(e.latitude, e.longitude)).toList())
-        };
-
-  void _onMapCreated(AppleMapController controller) {
-    mapController = controller;
+        },
+        currBusMarkers = {
+          for (final bus in buses)
+            Circle(
+                circleId: CircleId(bus.key),
+                center: LatLng(bus.location.latitude, bus.location.longitude),
+                radius: 20,
+                fillColor: const Color.fromARGB(255, 0, 0, 255),
+                strokeColor: const Color.fromARGB(255, 0, 0, 255))
+        } {
+    for (final point in bPoints) {
+      if (point.isStop) {
+        currBusMarkers.add(Circle(
+            circleId: CircleId(point.key),
+            center: LatLng(point.latitude, point.longitude),
+            radius: 10,
+            fillColor: Colors.white,
+            strokeColor: Colors.white));
+      }
+    }
   }
-
-  // void getMapDetails() async {
-  //   List<BusRoute> routes = await getRoutes();
-  //   for (BusRoute route in routes) {
-  //     if (route.shortName == "04") {
-  //       currRoute = route;
-  //     }
-  //   }
-
-  //   List<LatLng> points = [];
-  //   List<BusRoutePattern> patternPoints = await getRoutePatterns(currRoute.key);
-  //   for (BusRoutePattern pattern in patternPoints) {
-  //     List<BusPoint> a = await getPatternPoints(pattern.key);
-  //     for (BusPoint point in a) {
-  //       points.add(LatLng(point.latitude, point.longitude));
-  //     }
-  //   }
-
-  //   setState(() {
-  //     polylines = {Polyline(polylineId: PolylineId("04"), points: points)};
-  //     mapController.moveCamera(
-  //         CameraUpdate.newLatLngZoom(polylines.first.points.first, 15));
-  //   });
-  // }
-
-  // AppleMaps({super.key}) {
-  //   // getMapDetails();
-  // }
 
   @override
   Widget build(BuildContext context) {
     return AppleMap(
-      onMapCreated: _onMapCreated,
+      onMapCreated: onMapCreated,
       initialCameraPosition: const CameraPosition(
-        target: LatLng(0.0, 0.0),
+        target: LatLng(30.6187, -96.3365),
+        zoom: 14,
       ),
       polylines: currRoute,
+      circles: currBusMarkers,
     );
   }
 }

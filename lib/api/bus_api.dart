@@ -73,8 +73,38 @@ Future<List<BusRoutePattern>> getRoutePatterns(String arg) async {
   return patterns.map((e) => BusRoutePattern.fromJson(e)).toList();
 }
 
-Future<List<BusRoute>> getRoutes() async {
-  final List<dynamic> routes =
-      await _invokeMethod('GetRoutesByGroup', ["OnCampus"]);
+enum RouteGroups { onCampus, offCampus, gameday }
+
+extension RouteGroupsExtension on RouteGroups {
+  String get name {
+    switch (this) {
+      case RouteGroups.onCampus:
+        return 'On Campus';
+      case RouteGroups.offCampus:
+        return 'Off Campus';
+      case RouteGroups.gameday:
+        return 'Gameday';
+    }
+  }
+
+  String get key {
+    switch (this) {
+      case RouteGroups.onCampus:
+        return 'OnCampus';
+      case RouteGroups.offCampus:
+        return 'OffCampus';
+      case RouteGroups.gameday:
+        return 'Gameday';
+    }
+  }
+}
+
+Future<List<BusRoute>> getRouteByGroup(RouteGroups g) async {
+  final List<dynamic> routes = await _invokeMethod('GetRoutesByGroup', [g.key]);
   return routes.map((e) => BusRoute.fromJson(e)).toList();
+}
+
+Future<List<Bus>> getBuses(String arg) async {
+  final List<dynamic> buses = await _invokeMethod('GetBuses', [arg]);
+  return buses.map((e) => Bus.fromJson(e)).toList();
 }

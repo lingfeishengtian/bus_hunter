@@ -1,10 +1,14 @@
 {
-  "helloWorld": "Hello World!",
-  "@helloWorld": {
-    "description": "The conventional newborn programmer greeting"
-  },
   "homePageTitle": "TAMU Bus Hunter",
   "@homePageTitle": {
     "description": "The title of the home page"
+  },
+  "busRouteSelectionMenuTitle": "Bus Route",
+  "@busRouteSelectionMenuTitle": {
+    "description": "The title of the bus route selection menu"
+  },
+  "busRouteLoadingStatus": "Loading more bus routes...",
+  "@busRouteLoadingStatus": {
+    "description": "The status message when loading more bus routes"
   }
 }

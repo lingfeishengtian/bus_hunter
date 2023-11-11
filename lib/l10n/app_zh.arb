@@ -1,4 +1,5 @@
 {
-  "helloWorld": "你好世界!",
-  "homePageTitle": "TAMU大学校车地图"
+  "homePageTitle": "TAMU大学校车地图",
+  "busRouteSelectionMenuTitle": "路线",
+  "busRouteLoadingStatus": "正在加载路线..."
 }

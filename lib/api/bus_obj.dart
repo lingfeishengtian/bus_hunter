@@ -11,6 +11,9 @@ class BusRoute {
     this.description,
   });
 
+  @override
+  int get hashCode => key.hashCode;
+
   factory BusRoute.fromJson(Map<String, dynamic> json) {
     return BusRoute(
       key: json['key'],
@@ -23,6 +26,11 @@ class BusRoute {
   @override
   toString() {
     return 'BusRoute: {key: $key, name: $name, shortName: $shortName, description: $description}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return hashCode == other.hashCode;
   }
 }
 
@@ -194,5 +202,183 @@ class BusStop {
   @override
   toString() {
     return 'BusStop {key: $key, name: $name, stopCode: $stopCode, isTemporary: $isTemporary, attributes: $attributes}';
+  }
+}
+
+class Bus {
+  final String key;
+  final String name;
+  final String vehicleType;
+  final BusLocation location;
+  final int passengerLoad;
+  final int passengerCapacity;
+  final String routeKey;
+  final String? patternKey;
+  final String? tripKey;
+  final BusStopDeparture nextStopDeparture;
+  final List<dynamic> attributes;
+  final List<dynamic> amenities;
+  final String routeName;
+  final String routeShortName;
+  final String patternName;
+  final String patternDestination;
+  final String patternColor;
+  final String directionName;
+  final bool isTripper;
+  final String? workItemKey;
+  final BusRouteStatus? routeStatus;
+  final BusOpStatus opStatus;
+
+  Bus({
+    required this.key,
+    required this.name,
+    required this.vehicleType,
+    required this.location,
+    required this.passengerLoad,
+    required this.passengerCapacity,
+    required this.routeKey,
+    required this.patternKey,
+    required this.tripKey,
+    required this.nextStopDeparture,
+    required this.attributes,
+    required this.amenities,
+    required this.routeName,
+    required this.routeShortName,
+    required this.patternName,
+    required this.patternDestination,
+    required this.patternColor,
+    required this.directionName,
+    required this.isTripper,
+    required this.workItemKey,
+    required this.routeStatus,
+    required this.opStatus,
+  });
+
+  factory Bus.fromJson(Map<String, dynamic> json) {
+    return Bus(
+      key: json['key'],
+      name: json['name'],
+      vehicleType: json['vehicleType'],
+      location: BusLocation.fromJson(json['location']),
+      passengerLoad: json['passengerLoad'],
+      passengerCapacity: json['passengerCapacity'],
+      routeKey: json['routeKey'],
+      patternKey: json['patternKey'],
+      tripKey: json['tripKey'],
+      nextStopDeparture: BusStopDeparture.fromJson(json['nextStopDeparture']),
+      attributes: json['attributes'],
+      amenities: json['amenities'],
+      routeName: json['routeName'],
+      routeShortName: json['routeShortName'],
+      patternName: json['patternName'],
+      patternDestination: json['patternDestination'],
+      patternColor: json['patternColor'],
+      directionName: json['directionName'],
+      isTripper: json['isTripper'],
+      workItemKey: json['workItemKey'],
+      routeStatus: json['routeStatus'] != null
+          ? BusRouteStatus.fromJson(json['routeStatus'])
+          : null,
+      opStatus: BusOpStatus.fromJson(json['opStatus']),
+    );
+  }
+}
+
+class BusLocation {
+  final double latitude;
+  final double longitude;
+  final double speed;
+  final double heading;
+  final DateTime lastGpsDate;
+
+  BusLocation({
+    required this.latitude,
+    required this.longitude,
+    required this.speed,
+    required this.heading,
+    required this.lastGpsDate,
+  });
+
+  factory BusLocation.fromJson(Map<String, dynamic> json) {
+    return BusLocation(
+      latitude: json['latitude'],
+      longitude: json['longitude'],
+      speed: json['speed'].toDouble(),
+      heading: json['heading'],
+      lastGpsDate: DateTime.parse(json['lastGpsDate']),
+    );
+  }
+}
+
+class BusStopDeparture {
+  final String? stopKey;
+  final String stopCode;
+  final String? tripPointKey;
+  final String? patternPointKey;
+  final DateTime? scheduledDeparture;
+  final DateTime? estimatedDeparture;
+  final bool hasDeparted;
+  final String stopName;
+
+  BusStopDeparture({
+    required this.stopKey,
+    required this.stopCode,
+    required this.tripPointKey,
+    required this.patternPointKey,
+    required this.scheduledDeparture,
+    required this.estimatedDeparture,
+    required this.hasDeparted,
+    required this.stopName,
+  });
+
+  factory BusStopDeparture.fromJson(Map<String, dynamic> json) {
+    return BusStopDeparture(
+      stopKey: json['stopKey'],
+      stopCode: json['stopCode'],
+      tripPointKey: json['tripPointKey'],
+      patternPointKey: json['patternPointKey'],
+      scheduledDeparture: json['scheduledDeparture'] != null
+          ? DateTime.parse(json['scheduledDeparture'])
+          : null,
+      estimatedDeparture: json['estimatedDeparture'] != null
+          ? DateTime.parse(json['estimatedDeparture'])
+          : null,
+      hasDeparted: json['hasDeparted'],
+      stopName: json['stopName'],
+    );
+  }
+}
+
+class BusRouteStatus {
+  final String status;
+  final String color;
+
+  BusRouteStatus({
+    required this.status,
+    required this.color,
+  });
+
+  factory BusRouteStatus.fromJson(Map<String, dynamic> json) {
+    return BusRouteStatus(
+      status: json['status'],
+      color: json['color'],
+    );
+  }
+}
+
+class BusOpStatus {
+  final String status;
+  final String color;
+
+  BusOpStatus({
+    required this.status,
+    required this.color,
+  });
+
+  factory BusOpStatus.fromJson(Map<String, dynamic> json) {
+    return BusOpStatus(
+      status: json['status'],
+      color: json['color'],
+    );
   }
 }
