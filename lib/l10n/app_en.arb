@@ -1,0 +1,10 @@
+{
+  "helloWorld": "Hello World!",
+  "@helloWorld": {
+    "description": "The conventional newborn programmer greeting"
+  },
+  "homePageTitle": "TAMU Bus Hunter",
+  "@homePageTitle": {
+    "description": "The title of the home page"
+  }
+}
