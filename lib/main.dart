@@ -116,16 +116,13 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void initRoutes() async {
     for (RouteGroups group in RouteGroups.values) {
-      List<Future<void>> tasks = [];
       List<BusRoute> groupRoutes = await getRouteByGroup(group);
       for (BusRoute route in groupRoutes) {
-        tasks.add(
-            busData.addRouteAndRetrieveData(route).then((value) => setState(() {
-                  loadingStatus =
-                      AppLocalizations.of(context)!.busRouteLoadingStatus;
-                })));
+        busData.addRouteAndRetrieveData(route).then((value) => setState(() {
+              loadingStatus =
+                  AppLocalizations.of(context)!.busRouteLoadingStatus;
+            }));
       }
-      await Future.wait(tasks);
     }
     setState(() {
       loadingStatus = null;
@@ -159,6 +156,7 @@ class _MyHomePageState extends State<MyHomePage> {
     mapController?.animateCamera(CameraUpdate.newLatLngBounds(
         calculateLatLngFromBusPoints(busData.points(currRoute.key)!), 70));
     logger.i('Starting bus polling for route ${currRoute.name}');
+    pollBus(currRoute);
     timer = Timer.periodic(
         const Duration(seconds: 6), (Timer t) => pollBus(currRoute));
   }
