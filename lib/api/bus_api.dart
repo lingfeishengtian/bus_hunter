@@ -42,23 +42,37 @@ HubConnection _buildHubConnection() => HubConnectionBuilder()
 HubConnection _connection = _buildHubConnection();
 
 Future<void> _startServerConnection() async {
-  if (_connection.state == HubConnectionState.disconnected) {
-    _connection = _buildHubConnection();
+  while (_connection.state == HubConnectionState.disconnected) {
     try {
       await _connection.start();
     } catch (e) {
       _signalRLogger.e(e);
       _signalRLogger.e('Failed to connect to SignalR server, trying again...');
 
-      await Future.delayed(const Duration(seconds: 1), () {});
-      await _startServerConnection();
+      _connection.stop();
+      _connection = _buildHubConnection();
+      await Future.delayed(const Duration(milliseconds: 100), () {});
     }
   }
 }
 
 Future<dynamic> _invokeMethod(String method, List<Object?> args) async {
-  await _startServerConnection();
-  return _connection.invoke(method, args: args);
+  dynamic val;
+  bool err = false;
+  while (val == null || err) {
+    err = false;
+    await _startServerConnection();
+    try {
+      val = _connection.invoke(method, args: args).catchError((e) {
+        err = true;
+      });
+      val = val as List<dynamic>;
+    } catch (e) {
+      await Future.delayed(const Duration(seconds: 1), () {});
+    }
+  }
+
+  return val;
 }
 
 // Pass in a pattern key to get the pattern points

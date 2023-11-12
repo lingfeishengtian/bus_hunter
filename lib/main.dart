@@ -72,11 +72,10 @@ class MappedBusData {
   Future<void> addRouteAndRetrieveData(BusRoute route) async {
     List<BusRoutePattern> patterns = await getRoutePatterns(route.key);
     List<BusPoint> points = [];
-    for (BusRoutePattern pattern in patterns) {
-      List<BusPoint> patternPoints = await getPatternPoints(pattern.key);
-      points.addAll(patternPoints);
-    }
-    _addEntry(route, patterns, points);
+    _addEntry(route, patterns, []);
+    logger.i('Added route ${route.name} with ${patterns.length} patterns and '
+        '${points.length} points');
+    return;
   }
 
   int numOfRoutes() {
@@ -91,7 +90,16 @@ class MappedBusData {
     return data[route(key)]?.$1;
   }
 
-  List<BusPoint>? points(String key) {
+  Future<List<BusPoint>?> points(String key) async {
+    if (data[route(key)]?.$2.isEmpty ?? false) {
+      for (BusRoutePattern pattern in patterns(key) ?? []) {
+        data[route(key)]?.$2.addAll(await getPatternPoints(pattern.key));
+      }
+    }
+    return data[route(key)]?.$2;
+  }
+
+  List<BusPoint>? forceGetPoints(String key) {
     return data[route(key)]?.$2;
   }
 
@@ -108,24 +116,47 @@ class _MyHomePageState extends State<MyHomePage> {
   MappedBusData busData = MappedBusData();
   String? currRouteKey;
   String? loadingStatus;
+  bool? isLoading = false;
 
   List<Bus>? buses = [];
   Timer? timer;
 
   AppleMapController? mapController;
 
+  @override
+  initState() {
+    super.initState();
+    initRoutes();
+  }
+
   void initRoutes() async {
-    for (RouteGroups group in RouteGroups.values) {
-      List<BusRoute> groupRoutes = await getRouteByGroup(group);
-      for (BusRoute route in groupRoutes) {
-        busData.addRouteAndRetrieveData(route).then((value) => setState(() {
-              loadingStatus =
-                  AppLocalizations.of(context)!.busRouteLoadingStatus;
-            }));
-      }
+    if (busData.routes.isNotEmpty || loadingStatus != null) {
+      return;
     }
-    setState(() {
-      loadingStatus = null;
+
+    List<Future<void>> futures = [];
+    for (RouteGroups group in RouteGroups.values) {
+      futures.add(getRouteByGroup(group).then((routes) async {
+        List<Future<void>> innerFutures = [];
+        for (BusRoute route in routes) {
+          innerFutures.add(busData
+              .addRouteAndRetrieveData(route)
+              .then((value) => setState(() {
+                    loadingStatus =
+                        AppLocalizations.of(context)!.busRouteLoadingStatus;
+                  })));
+        }
+        await Future.wait(innerFutures);
+      }));
+      //delay a second
+      await Future.delayed(const Duration(seconds: 1), () {});
+    }
+
+    Future.wait(futures).then((value) {
+      logger.d('Finished loading routes');
+      setState(() {
+        loadingStatus = null;
+      });
     });
   }
 
@@ -141,7 +172,10 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   // This function assumes currRoute is not null
-  void startBusPolling() {
+  Future<void> startBusPolling() async {
+    setState(() {
+      isLoading = true;
+    });
     BusRoute? currRoute = busData.route(currRouteKey!);
 
     if (currRoute == null) {
@@ -154,25 +188,24 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     mapController?.animateCamera(CameraUpdate.newLatLngBounds(
-        calculateLatLngFromBusPoints(busData.points(currRoute.key)!), 70));
+        calculateLatLngFromBusPoints(await busData.points(currRoute.key) ?? []),
+        70));
     logger.i('Starting bus polling for route ${currRoute.name}');
     pollBus(currRoute);
     timer = Timer.periodic(
         const Duration(seconds: 6), (Timer t) => pollBus(currRoute));
+    setState(() {
+      isLoading = false;
+    });
   }
 
   void onRouteSelected(String routeKey) async {
     currRouteKey = routeKey;
     logger.i('Selected route $routeKey');
-
+    await startBusPolling();
     setState(() {
-      startBusPolling();
       logger.i('Attained route points and start polling bus location.');
     });
-  }
-
-  _MyHomePageState() {
-    initRoutes();
   }
 
   Widget _generateBusRouteWidget(BusRoute route) {
@@ -228,6 +261,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   var scaffoldKey = GlobalKey<ScaffoldState>();
 
+  //TODO: Add button to slide up bottom panel programmatically
   @override
   Widget build(BuildContext context) {
     return Stack(children: [
@@ -257,25 +291,24 @@ class _MyHomePageState extends State<MyHomePage> {
                   leading: const Icon(Icons.settings),
                   title: const Text('shezhi'),
                   enabled: true,
-                  onTap: () {
-                    print('moew');
-                  },
+                  onTap: () {},
                 )
               ],
             )),
         body: SlidingUpPanel(
           backdropEnabled: true,
           panelBuilder: (sc) => _buildPanel(sc),
-          body: AppleMaps(busData.points(currRouteKey ?? "") ?? [], buses ?? [],
+          body: AppleMaps(
+              busData.forceGetPoints(currRouteKey ?? "") ?? [], buses ?? [],
               routeColor: busData.getRouteColor(currRouteKey ?? ""),
               onMapCreated: (AppleMapController controller) {
             mapController = controller;
           }),
         ),
       ),
-      if (busData.numOfRoutes() == 0)
+      if (busData.numOfRoutes() == 0 || isLoading == true)
         ModalBarrier(dismissible: false, color: Colors.black.withAlpha(100)),
-      if (busData.numOfRoutes() == 0)
+      if (busData.numOfRoutes() == 0 || isLoading == true)
         const Center(
           child: CircularProgressIndicator(),
         ),
