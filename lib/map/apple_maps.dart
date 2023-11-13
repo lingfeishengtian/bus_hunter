@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:apple_maps_flutter/apple_maps_flutter.dart';
 import 'package:bus_hunter/api/bus_obj.dart';
 import 'package:bus_hunter/utils.dart';
@@ -26,6 +28,7 @@ class AppleMaps extends StatelessWidget {
                 annotationId: AnnotationId(bus.key),
                 infoWindow: InfoWindow(title: bus.key),
                 position: LatLng(bus.location.latitude, bus.location.longitude),
+                anchor: const Offset(0.5, 0.5),
                 icon: img,
                 rotation: bus.location.heading)
         } {

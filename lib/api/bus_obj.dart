@@ -304,7 +304,7 @@ class BusLocation {
       latitude: json['latitude'],
       longitude: json['longitude'],
       speed: json['speed'].toDouble(),
-      heading: json['heading'],
+      heading: json['heading'].toDouble(),
       lastGpsDate: DateTime.parse(json['lastGpsDate']),
     );
   }

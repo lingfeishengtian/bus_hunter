@@ -104,13 +104,15 @@ class MappedBusData {
   //   return data[route(key)]?.$2;
   // }
   Future<void> retrievePoints(String key) async {
-    a++;
     if (data[route(key)]?.$2.isEmpty ?? false) {
+      List<Future<void>> futures = [];
       for (BusRoutePattern pattern in patterns(key) ?? []) {
-        final p = await getPatternPoints(pattern.key);
-        logger.i('Adding ${p.length} points for pattern ${pattern.name}');
-        data[route(key)]?.$2.addAll(p);
+        futures.add(getPatternPoints(pattern.key).then((p) {
+          logger.i('Adding ${p.length} points for pattern ${pattern.name}');
+          data[route(key)]?.$2.addAll(p);
+        }));
       }
+      await Future.wait(futures);
     }
   }
 

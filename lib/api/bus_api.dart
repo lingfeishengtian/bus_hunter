@@ -16,15 +16,17 @@ final _builder = HubConnectionBuilder()
 var _connection = _builder.build();
 
 Future<void> _startServerConnection() async {
-  try {
-    await _connection.start();
-    _signalRLogger.i('Connected to SignalR server');
-  } catch (e) {
-    _signalRLogger.e(e);
-    _signalRLogger.e('Failed to connect to SignalR server, trying again...');
+  if (_connection.state == HubConnectionState.disconnected) {
+    try {
+      await _connection.start();
+      _signalRLogger.i('Connected to SignalR server');
+    } catch (e) {
+      _signalRLogger.e(e);
+      _signalRLogger.e('Failed to connect to SignalR server, trying again...');
 
-    await Future.delayed(const Duration(milliseconds: 1000), () {});
-    return await _startServerConnection();
+      await Future.delayed(const Duration(milliseconds: 1000), () {});
+      return await _startServerConnection();
+    }
   }
 }
 
@@ -32,17 +34,24 @@ Future<void> startServerConnection() async {
   await _startServerConnection();
 }
 
+int instances = 0;
 Future<dynamic> _invokeMethod(String method, List<String> args) async {
+  while (instances > 4) {
+    await Future.delayed(const Duration(milliseconds: 100), () {});
+  }
+  instances++;
   dynamic val;
   while (val == null) {
     try {
       _signalRLogger.i('Invoking $method with args $args');
+      await startServerConnection();
       val = _connection.invoke(method, args: args);
       val = val as List<dynamic>;
     } catch (e) {
       await Future.delayed(const Duration(seconds: 1), () {});
     }
   }
+  instances--;
   return val;
 }
 
