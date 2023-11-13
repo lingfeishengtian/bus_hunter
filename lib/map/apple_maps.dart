@@ -50,7 +50,6 @@ class AppleMaps extends StatelessWidget {
         zoom: 14,
       ),
       myLocationEnabled: true,
-      myLocationButtonEnabled: true,
       polylines: currRoute,
       circles: stopMarkers,
       annotations: busMarkers,

@@ -60,6 +60,8 @@ class MyHomePage extends StatefulWidget {
 
 typedef BusRouteData = (List<BusRoutePattern>, List<BusPoint>);
 
+int a = 0;
+
 class MappedBusData {
   HashMap<BusRoute, BusRouteData> data;
 
@@ -91,13 +93,25 @@ class MappedBusData {
     return data[route(key)]?.$1;
   }
 
-  Future<List<BusPoint>?> points(String key) async {
+  // Future<List<BusPoint>?> points(String key) async {
+  //   if (data[route(key)]?.$2.isEmpty ?? false) {
+  //     for (BusRoutePattern pattern in patterns(key) ?? []) {
+  //       final p = await getPatternPoints(pattern.key);
+  //       print('Adding ${p.length} points for pattern ${pattern.name}');
+  //       data[route(key)]?.$2.addAll(p);
+  //     }
+  //   }
+  //   return data[route(key)]?.$2;
+  // }
+  Future<void> retrievePoints(String key) async {
+    a++;
     if (data[route(key)]?.$2.isEmpty ?? false) {
       for (BusRoutePattern pattern in patterns(key) ?? []) {
-        data[route(key)]?.$2.addAll(await getPatternPoints(pattern.key));
+        final p = await getPatternPoints(pattern.key);
+        logger.i('Adding ${p.length} points for pattern ${pattern.name}');
+        data[route(key)]?.$2.addAll(p);
       }
     }
-    return data[route(key)]?.$2;
   }
 
   List<BusPoint>? forceGetPoints(String key) {
@@ -134,6 +148,8 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   initState() {
     super.initState();
+    startServerConnection().then((value) => initRoutes());
+    // startServerConnection();
     initRoutes();
     initIcon();
   }
@@ -156,9 +172,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (busData.routes.isNotEmpty || loadingStatus != null) {
       return;
     }
-
     List<Future<void>> futures = [];
-    // for (RouteGroups group in RouteGroups.values) {
     futures.add(getRouteByGroup(currRouteGroup).then((routes) async {
       List<Future<void>> innerFutures = [];
       for (BusRoute route in routes) {
@@ -174,11 +188,10 @@ class _MyHomePageState extends State<MyHomePage> {
     //   await Future.delayed(const Duration(seconds: 1), () {});
     // }
 
-    Future.wait(futures).then((value) {
-      logger.d('Finished loading routes');
-      setState(() {
-        loadingStatus = null;
-      });
+    await Future.wait(futures);
+    logger.d('Finished loading routes');
+    setState(() {
+      loadingStatus = null;
     });
   }
 
@@ -194,10 +207,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   // This function assumes currRoute is not null
-  Future<void> startBusPolling() async {
-    setState(() {
-      isLoading = true;
-    });
+  void startBusPolling() {
     BusRoute? currRoute = busData.route(currRouteKey!);
 
     if (currRoute == null) {
@@ -210,21 +220,26 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     mapController?.animateCamera(CameraUpdate.newLatLngBounds(
-        calculateLatLngFromBusPoints(await busData.points(currRoute.key) ?? []),
+        calculateLatLngFromBusPoints(
+            busData.forceGetPoints(currRoute.key) ?? []),
         70));
     logger.i('Starting bus polling for route ${currRoute.name}');
     pollBus(currRoute);
     timer = Timer.periodic(
         const Duration(seconds: 6), (Timer t) => pollBus(currRoute));
-    setState(() {
-      isLoading = false;
-    });
   }
 
   void onRouteSelected(String routeKey) async {
     currRouteKey = routeKey;
     logger.i('Selected route $routeKey');
-    await startBusPolling();
+    setState(() {
+      isLoading = true;
+    });
+    await busData.retrievePoints(routeKey);
+    setState(() {
+      isLoading = false;
+    });
+    startBusPolling();
     setState(() {
       logger.i('Attained route points and start polling bus location.');
     });

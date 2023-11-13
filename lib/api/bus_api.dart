@@ -1,77 +1,48 @@
+import 'package:bus_hunter/main.dart';
 import 'package:signalr_core/signalr_core.dart';
-import 'package:logger/logger.dart';
 import 'bus_obj.dart';
 
-final _signalRLogger = Logger(
-    printer: PrettyPrinter(
-        methodCount: 0,
-        errorMethodCount: 8,
-        lineLength: 120,
-        colors: true,
-        printEmojis: true,
-        printTime: true),
-    output: ConsoleOutput());
+final _signalRLogger = logger;
 
-final _connectionOptions = HttpConnectionOptions(logging: (level, message) {
-  switch (level) {
-    case LogLevel.critical:
-    case LogLevel.error:
-      _signalRLogger.e(message);
-      break;
-    case LogLevel.warning:
-      _signalRLogger.w(message);
-      break;
-    case LogLevel.information:
-      _signalRLogger.i(message);
-      break;
-    case LogLevel.debug:
-      _signalRLogger.d(message);
-    case LogLevel.trace:
-      _signalRLogger.t(message);
-      break;
-    case LogLevel.none:
-      _signalRLogger.i(message);
-  }
-});
-
-HubConnection _buildHubConnection() => HubConnectionBuilder()
-    .withAutomaticReconnect()
-    .withUrl(
-        'https://transport.tamu.edu/busroutes.web/mapHub', _connectionOptions)
-    .build();
-HubConnection _connection = _buildHubConnection();
+final httpConnectionOptions = HttpConnectionOptions(
+  logging: (level, message) => _signalRLogger.i(message),
+  skipNegotiation: false,
+  transport: HttpTransportType.longPolling,
+);
+final _builder = HubConnectionBuilder()
+    .withHubProtocol(JsonHubProtocol())
+    .withUrl("https://transport.tamu.edu/busroutes.web/mapHub")
+    .withAutomaticReconnect([0, 1000, 2000]);
+var _connection = _builder.build();
 
 Future<void> _startServerConnection() async {
-  while (_connection.state == HubConnectionState.disconnected) {
-    try {
-      await _connection.start();
-    } catch (e) {
-      _signalRLogger.e(e);
-      _signalRLogger.e('Failed to connect to SignalR server, trying again...');
+  try {
+    await _connection.start();
+    _signalRLogger.i('Connected to SignalR server');
+  } catch (e) {
+    _signalRLogger.e(e);
+    _signalRLogger.e('Failed to connect to SignalR server, trying again...');
 
-      _connection.stop();
-      _connection = _buildHubConnection();
-      await Future.delayed(const Duration(milliseconds: 100), () {});
-    }
+    await Future.delayed(const Duration(milliseconds: 1000), () {});
+    return await _startServerConnection();
   }
 }
 
-Future<dynamic> _invokeMethod(String method, List<Object?> args) async {
+Future<void> startServerConnection() async {
+  await _startServerConnection();
+}
+
+Future<dynamic> _invokeMethod(String method, List<String> args) async {
   dynamic val;
-  bool err = false;
-  while (val == null || err) {
-    err = false;
-    await _startServerConnection();
+  while (val == null) {
     try {
-      val = _connection.invoke(method, args: args).catchError((e) {
-        err = true;
-      });
+      _signalRLogger.i('Invoking $method with args $args');
+      val = _connection.invoke(method, args: args);
       val = val as List<dynamic>;
     } catch (e) {
       await Future.delayed(const Duration(seconds: 1), () {});
     }
   }
-
   return val;
 }
 

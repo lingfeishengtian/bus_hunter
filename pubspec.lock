@@ -215,13 +215,14 @@ packages:
     source: hosted
     version: "1.10.0"
   sse_client:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: sse_client
-      sha256: "71bd826430b41ab20a69d85bf2dfe9f11cfe222938e681ada1aea71fc8adf348"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.0"
+      path: "."
+      ref: master
+      resolved-ref: "385afff28962a32285116cc7ee5865dadb1222bf"
+      url: "https://github.com/lingfeishengtian/sse_client.git"
+    source: git
+    version: "0.1.1"
   stack_trace:
     dependency: transitive
     description:
