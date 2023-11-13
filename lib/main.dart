@@ -6,6 +6,7 @@ import 'package:bus_hunter/api/bus_api.dart';
 import 'package:bus_hunter/api/bus_obj.dart';
 import 'package:bus_hunter/map/apple_maps.dart';
 import 'package:bus_hunter/utils.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -113,10 +114,17 @@ class MappedBusData {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  MappedBusData busData = MappedBusData();
+  // MappedBusData busData = MappedBusData();
   String? currRouteKey;
   String? loadingStatus;
   bool? isLoading = false;
+
+  Map<RouteGroups, MappedBusData> routeData = {
+    RouteGroups.onCampus: MappedBusData(),
+    RouteGroups.offCampus: MappedBusData(),
+    RouteGroups.gameday: MappedBusData(),
+  };
+  RouteGroups currRouteGroup = RouteGroups.values.first;
 
   List<Bus>? buses = [];
   Timer? timer;
@@ -127,6 +135,21 @@ class _MyHomePageState extends State<MyHomePage> {
   initState() {
     super.initState();
     initRoutes();
+    initIcon();
+  }
+
+  Future<void> initIcon() async {
+    setState(() {
+      isLoading = true;
+    });
+    await initBusDirectionIcon();
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  MappedBusData get busData {
+    return routeData[currRouteGroup]!;
   }
 
   void initRoutes() async {
@@ -135,22 +158,21 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     List<Future<void>> futures = [];
-    for (RouteGroups group in RouteGroups.values) {
-      futures.add(getRouteByGroup(group).then((routes) async {
-        List<Future<void>> innerFutures = [];
-        for (BusRoute route in routes) {
-          innerFutures.add(busData
-              .addRouteAndRetrieveData(route)
-              .then((value) => setState(() {
-                    loadingStatus =
-                        AppLocalizations.of(context)!.busRouteLoadingStatus;
-                  })));
-        }
-        await Future.wait(innerFutures);
-      }));
-      //delay a second
-      await Future.delayed(const Duration(seconds: 1), () {});
-    }
+    // for (RouteGroups group in RouteGroups.values) {
+    futures.add(getRouteByGroup(currRouteGroup).then((routes) async {
+      List<Future<void>> innerFutures = [];
+      for (BusRoute route in routes) {
+        innerFutures.add(
+            busData.addRouteAndRetrieveData(route).then((value) => setState(() {
+                  loadingStatus =
+                      AppLocalizations.of(context)!.busRouteLoadingStatus;
+                })));
+      }
+      await Future.wait(innerFutures);
+    }));
+    //delay a second
+    //   await Future.delayed(const Duration(seconds: 1), () {});
+    // }
 
     Future.wait(futures).then((value) {
       logger.d('Finished loading routes');
@@ -212,8 +234,7 @@ class _MyHomePageState extends State<MyHomePage> {
     Color routeColor = busData.getRouteColor(route.key);
     Color textColor =
         routeColor.computeLuminance() > 0.5 ? Colors.black : Colors.white;
-    return Container(
-        margin: const EdgeInsets.only(bottom: 20),
+    return Expanded(
         child: ElevatedButton(
             onPressed: () => onRouteSelected(route.key),
             style: ElevatedButton.styleFrom(
@@ -224,7 +245,9 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             child: Column(
               children: [
-                Text(route.name, style: TextStyle(color: textColor)),
+                Text(route.name,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: textColor)),
                 Text(
                   route.shortName,
                   style: TextStyle(
@@ -237,6 +260,20 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _buildPanel(ScrollController sc) {
+    final twoByTwoBusRouteWidgets = [];
+    for (int i = 0; i < busData.routes.length; i += 2) {
+      twoByTwoBusRouteWidgets.add(Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _generateBusRouteWidget(busData.routes[i]),
+          if (i + 1 < busData.routes.length) const SizedBox(width: 20),
+          if (i + 1 < busData.routes.length)
+            _generateBusRouteWidget(busData.routes[i + 1]),
+        ],
+      ));
+      twoByTwoBusRouteWidgets.add(const SizedBox(height: 20));
+    }
+
     return MediaQuery.removePadding(
         context: context,
         removeTop: true,
@@ -244,16 +281,29 @@ class _MyHomePageState extends State<MyHomePage> {
             padding: const EdgeInsets.all(20),
             controller: sc,
             children: [
-              Text(AppLocalizations.of(context)!.busRouteSelectionMenuTitle,
-                  style: Theme.of(context).textTheme.displaySmall),
-              const SizedBox(height: 20),
-              Wrap(
-                spacing: 30,
-                children: busData.routes
-                    .map<Widget>(
-                        (BusRoute element) => _generateBusRouteWidget(element))
-                    .toList(),
+              Row(
+                key: const Key("busRouteSelectionMenu"),
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(AppLocalizations.of(context)!.busRouteSelectionMenuTitle,
+                      style: Theme.of(context).textTheme.displaySmall),
+                  DropdownButton(
+                      borderRadius: BorderRadius.circular(10),
+                      items: RouteGroups.values
+                          .map((group) => DropdownMenuItem(
+                              key: Key(group.key),
+                              value: group,
+                              child: Text(group.name)))
+                          .toList(),
+                      value: currRouteGroup,
+                      onChanged: (value) => setState(() {
+                            currRouteGroup = value as RouteGroups;
+                            initRoutes();
+                          })),
+                ],
               ),
+              const SizedBox(height: 20),
+              ...twoByTwoBusRouteWidgets,
               Text(loadingStatus ?? "",
                   style: Theme.of(context).textTheme.bodyMedium),
             ]));
@@ -264,6 +314,10 @@ class _MyHomePageState extends State<MyHomePage> {
   //TODO: Add button to slide up bottom panel programmatically
   @override
   Widget build(BuildContext context) {
+    if (buses?.isEmpty ?? false) {
+      buses =
+          _generateTestBusInDebug() != null ? [_generateTestBusInDebug()!] : [];
+    }
     return Stack(children: [
       Scaffold(
         key: scaffoldKey,
@@ -314,4 +368,47 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
     ]);
   }
+}
+
+Bus? _generateTestBusInDebug() {
+  if (kDebugMode) {
+    return Bus(
+      key: "1",
+      location: BusLocation(
+          latitude: 30.6187,
+          longitude: -96.3365,
+          heading: 2 * 3.14,
+          speed: 0,
+          lastGpsDate: DateTime.now()),
+      name: "bus 1",
+      vehicleType: "bus",
+      passengerCapacity: 1,
+      passengerLoad: 2,
+      routeKey: '1',
+      patternKey: 'f',
+      patternColor: "0000000",
+      patternName: "pattern 1",
+      tripKey: "1",
+      attributes: [],
+      amenities: [],
+      routeName: '',
+      routeShortName: '',
+      patternDestination: '',
+      directionName: '',
+      isTripper: false,
+      workItemKey: '',
+      routeStatus: BusRouteStatus(color: "", status: 'm'),
+      opStatus: BusOpStatus(status: 'status', color: 'color'),
+      nextStopDeparture: BusStopDeparture(
+          stopKey: 'stopKey',
+          stopCode: 'stopCode',
+          tripPointKey: 'tripPointKey',
+          patternPointKey: 'patternPointKey',
+          scheduledDeparture: DateTime.now(),
+          estimatedDeparture: DateTime.now(),
+          hasDeparted: false,
+          stopName: 'stopName'),
+    );
+  }
+  return null;
 }

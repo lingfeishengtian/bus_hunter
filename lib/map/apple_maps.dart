@@ -1,10 +1,12 @@
 import 'package:apple_maps_flutter/apple_maps_flutter.dart';
 import 'package:bus_hunter/api/bus_obj.dart';
+import 'package:bus_hunter/utils.dart';
 import 'package:flutter/material.dart';
 
 class AppleMaps extends StatelessWidget {
   final Set<Polyline> currRoute;
-  final Set<Circle> currBusMarkers;
+  final Set<Circle> stopMarkers = {};
+  final Set<Annotation> busMarkers;
   final Color routeColor;
   final Function(AppleMapController) onMapCreated;
 
@@ -18,18 +20,18 @@ class AppleMaps extends StatelessWidget {
               points:
                   bPoints.map((e) => LatLng(e.latitude, e.longitude)).toList())
         },
-        currBusMarkers = {
+        busMarkers = {
           for (final bus in buses)
-            Circle(
-                circleId: CircleId(bus.key),
-                center: LatLng(bus.location.latitude, bus.location.longitude),
-                radius: 20,
-                fillColor: const Color.fromARGB(255, 0, 0, 255),
-                strokeColor: const Color.fromARGB(255, 0, 0, 255))
+            Annotation(
+                annotationId: AnnotationId(bus.key),
+                infoWindow: InfoWindow(title: bus.key),
+                position: LatLng(bus.location.latitude, bus.location.longitude),
+                icon: img,
+                rotation: bus.location.heading)
         } {
     for (final point in bPoints) {
       if (point.isStop) {
-        currBusMarkers.add(Circle(
+        stopMarkers.add(Circle(
             circleId: CircleId(point.key),
             center: LatLng(point.latitude, point.longitude),
             radius: 10,
@@ -47,8 +49,11 @@ class AppleMaps extends StatelessWidget {
         target: LatLng(30.6187, -96.3365),
         zoom: 14,
       ),
+      myLocationEnabled: true,
+      myLocationButtonEnabled: true,
       polylines: currRoute,
-      circles: currBusMarkers,
+      circles: stopMarkers,
+      annotations: busMarkers,
     );
   }
 }

@@ -4,10 +4,11 @@ packages:
   apple_maps_flutter:
     dependency: "direct main"
     description:
-      name: apple_maps_flutter
-      sha256: "3785518d2bf37066e920b055b171f76258e8937d9182946e5c3ba63614f28285"
-      url: "https://pub.dev"
-    source: hosted
+      path: "."
+      ref: master
+      resolved-ref: b09716689e9c5196285fec7a1ff132923269dc12
+      url: "https://github.com/lingfeishengtian/apple_maps_flutter.git"
+    source: git
     version: "1.2.0"
   async:
     dependency: transitive
