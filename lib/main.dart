@@ -68,9 +68,12 @@ class MappedBusData {
   HashMap<BusRoute, BusRouteData> data;
   MappedBusData() : data = HashMap();
 
-  void _addEntry(
-      BusRoute route, List<BusRoutePattern> patterns, List<BusPoint> points) {
-    data.addEntries([MapEntry(route, (patterns, points))]);
+  void _addEntry(BusRoute route, List<BusRoutePattern> patterns) {
+    data.addEntries([MapEntry(route, (patterns, []))]);
+  }
+
+  void _removeEntry(String routeKey) {
+    data.remove(routeKey);
   }
 
   // Will throw an error if pattern is empty for this route. In addition it will not add the route
@@ -80,7 +83,11 @@ class MappedBusData {
     if (patterns.isEmpty) {
       throw Exception('Empty patterns for route ${route.name}');
     }
-    _addEntry(route, patterns, []);
+    if (routes.any((element) => element.key == route.key)) {
+      data[route.key]?.$1.addAll(patterns);
+    } else {
+      _addEntry(route, patterns);
+    }
     logger.t('Added route ${route.name} with ${patterns.length} patterns and '
         '${points.length} points');
   }
@@ -138,7 +145,18 @@ class MappedBusData {
   }
 
   Color getRouteColor(String key) {
+    if (patterns(key)?.isEmpty ?? false) return Colors.black;
     return hexToColor(patterns(key)?.first.lineDisplayInfo.color ?? "#000000");
+  }
+
+  bool emptyRouteData() {
+    if (routes.isEmpty) return true;
+    for (var element in data.values) {
+      if (element.$1.isEmpty) {
+        return true;
+      }
+    }
+    return false;
   }
 }
 
@@ -177,6 +195,9 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     super.initState();
     _fabHeight = _initFabHeight;
     initAppElementsWhileLoading().then((value) async {
+      setState(() {
+        isLoading = true;
+      });
       await startServerConnection();
       initRoutes();
     });
@@ -220,12 +241,11 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   void initRoutes() async {
-    if (busData.routes.isNotEmpty) {
+    if (!busData.emptyRouteData()) {
       return;
     }
     List<Future<void>> futures = [];
     if (currRouteGroup < 0) {
-      logger.t('Entering favorites mode');
       for (BusRoute route in _favorites.routes) {
         futures.add(busData
             .addRouteAndRetrieveData(route)
@@ -247,30 +267,30 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           futures.add(busData
               .addRouteAndRetrieveData(route)
               .then((value) => setState(() {
+                    isLoading = false;
                     loadingStatus =
                         AppLocalizations.of(context)!.busRouteLoadingStatus;
                   }))
               .onError((error, stackTrace) {
             logger.e('Error adding route ${route.name}, failed with "$error"');
-            // TODO: If route group is favorite, remove it from favorite
           }));
         }
       });
-
-      await Future.wait(futures);
-      logger.t('Finished loading routes');
-      setState(() {
-        loadingStatus = null;
-      });
     }
+
+    await Future.wait(futures);
+    setState(() {
+      loadingStatus = null;
+      isLoading = false;
+    });
   }
 
-  final _waitDuration = const Duration(seconds: 3);
+  final _waitDuration = const Duration(seconds: 4);
   // This function assumes currRoute is not null
   Future<void> pollBus(BusRoute currRoute) async {
-    logger.d('Polling bus ${currRoute.name}');
+    logger.i('Polling bus ${currRoute.name}');
     buses = await getBuses(currRoute.shortName);
-    logger.d('Got ${buses?.length} buses');
+    logger.i('Got ${buses?.length} buses');
     setState(() {});
   }
 
@@ -283,32 +303,36 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       return;
     }
 
+    setState(() {
+      isLoading = true;
+    });
     mapController?.animateCamera(CameraUpdate.newLatLngBounds(
         calculateLatLngFromBusPoints(await busData.points(currRoute.key) ?? []),
         70));
     logger.t('Starting bus polling for route ${currRoute.name}');
     bool complete = true;
-    await pollBus(currRoute);
-    timer?.cancel();
-    timer = Timer.periodic(_waitDuration, (Timer t) {
+
+    Future<void> runPolling() async {
       if (complete) {
         complete = false;
-        pollBus(currRoute).whenComplete(() => complete = true);
+        await pollBus(currRoute).whenComplete(() => complete = true);
       }
+    }
+
+    await runPolling();
+    timer?.cancel();
+    timer = Timer.periodic(_waitDuration, (Timer t) {
+      runPolling();
+    });
+    setState(() {
+      isLoading = false;
     });
   }
 
   void onRouteSelected(String routeKey) async {
     currRouteKey = routeKey;
     logger.t('Selected route $routeKey');
-    setState(() {
-      isLoading = true;
-    });
     await startBusPolling();
-    setState(() {
-      logger.t('Attained route points and start polling bus location.');
-      isLoading = false;
-    });
   }
 
   Widget _generateBusRouteWidget(BusRoute route) {
@@ -357,7 +381,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
     final List<int> items = [];
     if (_favorites.routes.isNotEmpty) {
-      items.add(0);
+      items.insert(0, -1);
     }
     for (var element in RouteGroups.values) {
       items.add(element.index);
@@ -471,18 +495,39 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                   _initFabHeight;
             }),
           ),
-          Positioned(
-            right: 20.0,
-            bottom: _fabHeight,
-            child: FloatingActionButton(
-              onPressed: () {},
-              backgroundColor: Colors.white,
-              child: Icon(
-                Icons.star_border_outlined,
-                color: Theme.of(context).primaryColor,
-              ),
-            ),
-          ),
+          currRouteKey == null
+              ? Container()
+              : Positioned(
+                  right: 20.0,
+                  bottom: _fabHeight,
+                  child: FloatingActionButton(
+                    onPressed: () {
+                      setState(() {
+                        logger.i(_favorites.routes
+                            .any((element) => element.key == currRouteKey));
+                        if (_favorites.routes
+                            .any((element) => element.key == currRouteKey)) {
+                          _favorites._removeEntry(currRouteKey!);
+                          if (_favorites.routes.isEmpty) {
+                            currRouteGroup = RouteGroups.values.first.index;
+                          }
+                        } else {
+                          _favorites._addEntry(busData.route(currRouteKey!)!,
+                              busData.patterns(currRouteKey!)!);
+                        }
+                        saveFavorites();
+                      });
+                    },
+                    backgroundColor: Colors.white,
+                    child: Icon(
+                      _favorites.routes
+                              .any((element) => element.key == currRouteKey)
+                          ? Icons.star
+                          : Icons.star_border_outlined,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  ),
+                ),
         ]),
       ),
       if (busData.numOfRoutes() == 0 || isLoading == true)

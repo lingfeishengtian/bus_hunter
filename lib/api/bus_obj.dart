@@ -23,6 +23,15 @@ class BusRoute {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'key': key,
+      'name': name,
+      'shortName': shortName,
+      'description': description,
+    };
+  }
+
   @override
   toString() {
     return 'BusRoute: {key: $key, name: $name, shortName: $shortName, description: $description}';
