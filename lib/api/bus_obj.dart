@@ -265,7 +265,8 @@ class Bus {
       routeKey: json['routeKey'],
       patternKey: json['patternKey'],
       tripKey: json['tripKey'],
-      nextStopDeparture: BusStopDeparture.fromJson(json['nextStopDeparture']),
+      nextStopDeparture:
+          BusStopDeparture.fromJson(json['nextStopDeparture'] ?? {}),
       attributes: json['attributes'],
       amenities: json['amenities'],
       routeName: json['routeName'],
@@ -334,7 +335,7 @@ class BusStopDeparture {
   factory BusStopDeparture.fromJson(Map<String, dynamic> json) {
     return BusStopDeparture(
       stopKey: json['stopKey'],
-      stopCode: json['stopCode'],
+      stopCode: json['stopCode'] ?? '',
       tripPointKey: json['tripPointKey'],
       patternPointKey: json['patternPointKey'],
       scheduledDeparture: json['scheduledDeparture'] != null
@@ -343,8 +344,8 @@ class BusStopDeparture {
       estimatedDeparture: json['estimatedDeparture'] != null
           ? DateTime.parse(json['estimatedDeparture'])
           : null,
-      hasDeparted: json['hasDeparted'],
-      stopName: json['stopName'],
+      hasDeparted: json['hasDeparted'] ?? false,
+      stopName: json['stopName'] ?? '',
     );
   }
 }

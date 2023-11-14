@@ -1,7 +1,9 @@
 import 'package:apple_maps_flutter/apple_maps_flutter.dart';
 import 'package:bus_hunter/api/bus_obj.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+late final SharedPreferences prefs;
 
 Color hexToColor(String hexString) {
   var hexColor = hexString.replaceAll("#", "");
@@ -40,17 +42,9 @@ LatLngBounds calculateLatLngFromBusPoints(List<BusPoint> bPoints) {
 }
 
 BitmapDescriptor img = BitmapDescriptor.defaultAnnotation;
-Uint8List? imgBytes;
 Future<void> initBusDirectionIcon() async {
-  // img = await BitmapDescriptor.fromAssetImage(
-  //     const ImageConfiguration(), "assets/icons/arrow_bus.png");
-  imgBytes = (await rootBundle.load("assets/icons/arrow_bus.png"))
-      .buffer
-      .asUint8List();
-  img = BitmapDescriptor.fromBytes(imgBytes!);
+  img = BitmapDescriptor.fromBytes(
+      (await rootBundle.load("assets/icons/arrow_bus.png"))
+          .buffer
+          .asUint8List());
 }
-
-// Future<BitmapDescriptor> getImgWithRotation() async {
-//   final img = Image.asset("assets/icons/arrow_bus.png",
-//       width: 100, height: 100, fit: BoxFit.contain);
-// }

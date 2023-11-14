@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:apple_maps_flutter/apple_maps_flutter.dart';
 import 'package:bus_hunter/api/bus_obj.dart';
 import 'package:bus_hunter/utils.dart';
@@ -53,6 +51,7 @@ class AppleMaps extends StatelessWidget {
         zoom: 14,
       ),
       myLocationEnabled: true,
+      rotateGesturesEnabled: false,
       polylines: currRoute,
       circles: stopMarkers,
       annotations: busMarkers,

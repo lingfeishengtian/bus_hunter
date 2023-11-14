@@ -5,7 +5,7 @@ import 'bus_obj.dart';
 final _signalRLogger = logger;
 
 final httpConnectionOptions = HttpConnectionOptions(
-  logging: (level, message) => _signalRLogger.i(message),
+  logging: (level, message) => _signalRLogger.t(message),
   skipNegotiation: false,
   transport: HttpTransportType.longPolling,
 );
@@ -19,7 +19,7 @@ Future<void> _startServerConnection() async {
   if (_connection.state == HubConnectionState.disconnected) {
     try {
       await _connection.start();
-      _signalRLogger.i('Connected to SignalR server');
+      _signalRLogger.d('Connected to SignalR server');
     } catch (e) {
       _signalRLogger.e(e);
       _signalRLogger.e('Failed to connect to SignalR server, trying again...');
@@ -43,7 +43,7 @@ Future<dynamic> _invokeMethod(String method, List<String> args) async {
   dynamic val;
   while (val == null) {
     try {
-      _signalRLogger.i('Invoking $method with args $args');
+      _signalRLogger.t('Invoking $method with args $args');
       await startServerConnection();
       val = _connection.invoke(method, args: args);
       val = val as List<dynamic>;

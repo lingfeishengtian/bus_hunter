@@ -46,6 +46,7 @@ dependencies:
   intl: any
   sliding_up_panel: ^2.0.0+1
   collection: ^1.17.2
+  shared_preferences: ^2.2.2
 dependency_overrides:
   sse_client:
     git:
