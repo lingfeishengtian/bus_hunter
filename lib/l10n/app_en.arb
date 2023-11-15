@@ -10,5 +10,29 @@
   "busRouteLoadingStatus": "Loading more bus routes...",
   "@busRouteLoadingStatus": {
     "description": "The status message when loading more bus routes"
+  },
+  "favorites": "Favorites",
+  "@favorites": {
+    "description": "Favorites dropdown option"
+  },
+  "onCampus": "On Campus",
+  "@onCampus": {
+    "description": "On Campus dropdown option"
+  },
+  "offCampus": "Off Campus",
+  "@offCampus": {
+    "description": "Off Campus dropdown option"
+  },
+  "gameday": "Gameday",
+  "@gameday": {
+    "description": "Gameday dropdown option"
+  },
+  "nextStop": "Next Stop",
+  "@nextStop": {
+    "description": "Next Stop dropdown option"
+  },
+  "percentFull": "{percent} full",
+  "@percentFull": {
+    "description": "The percent full of the bus"
   }
 }

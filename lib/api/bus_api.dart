@@ -15,11 +15,26 @@ final _builder = HubConnectionBuilder()
     .withAutomaticReconnect([0, 1000, 2000]);
 var _connection = _builder.build();
 
+Future<void> rebuildConnection() async {
+  _connection = _builder.build();
+  await _startServerConnection();
+}
+
 Future<void> _startServerConnection() async {
   if (_connection.state == HubConnectionState.disconnected) {
     try {
-      await _connection.start();
-      _signalRLogger.d('Connected to SignalR server');
+      await _connection.start()?.timeout(const Duration(seconds: 10),
+          onTimeout: () async {
+        _signalRLogger.e('Timeouot on connection');
+      });
+      if (_connection.state == HubConnectionState.connected) {
+        _signalRLogger.d('Connected to SignalR server');
+      } else {
+        _signalRLogger
+            .e('Failed to connect to SignalR server, trying again...');
+        await Future.delayed(const Duration(milliseconds: 1000), () {});
+        return await rebuildConnection();
+      }
     } catch (e) {
       _signalRLogger.e(e);
       _signalRLogger.e('Failed to connect to SignalR server, trying again...');
@@ -70,17 +85,6 @@ Future<List<BusRoutePattern>> getRoutePatterns(String arg) async {
 enum RouteGroups { onCampus, offCampus, gameday }
 
 extension RouteGroupsExtension on RouteGroups {
-  String get name {
-    switch (this) {
-      case RouteGroups.onCampus:
-        return 'On Campus';
-      case RouteGroups.offCampus:
-        return 'Off Campus';
-      case RouteGroups.gameday:
-        return 'Gameday';
-    }
-  }
-
   String get key {
     switch (this) {
       case RouteGroups.onCampus:

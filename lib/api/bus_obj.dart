@@ -78,6 +78,19 @@ class BusRoutePattern {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'key': key,
+      'name': name,
+      'direction': direction.toJson(),
+      'destination': destination,
+      'lineDisplayInfo': lineDisplayInfo.toJson(),
+      'timePointDisplayInfo': timePointDisplayInfo.toJson(),
+      'busStopDisplayInfo': busStopDisplayInfo.toJson(),
+      'isDisplay': isDisplay,
+    };
+  }
+
   @override
   toString() {
     return 'BusRoutePattern {key: $key, name: $name, direction: $direction, destination: $destination, lineDisplayInfo: $lineDisplayInfo, timePointDisplayInfo: $timePointDisplayInfo, busStopDisplayInfo: $busStopDisplayInfo, isDisplay: $isDisplay}';
@@ -106,6 +119,15 @@ class BusDisplayInfo {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'color': color,
+      'type': type,
+      'symbol': symbol,
+      'size': size,
+    };
+  }
+
   @override
   toString() {
     return '{color: $color, type: $type, symbol: $symbol, size: $size}';
@@ -126,6 +148,13 @@ class BusRouteDirection {
       key: json['key'],
       name: json['name'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'key': key,
+      'name': name,
+    };
   }
 
   @override

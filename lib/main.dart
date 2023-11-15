@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
-import 'dart:convert';
+import 'package:bus_hunter/mapped_bus_data.dart';
+import 'package:bus_hunter/route_state_manager.dart';
 import 'package:collection/collection.dart';
 import 'package:apple_maps_flutter/apple_maps_flutter.dart';
 import 'package:bus_hunter/api/bus_api.dart';
@@ -12,7 +13,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:logger/logger.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 
 void main() {
@@ -64,116 +64,11 @@ typedef BusRouteData = (List<BusRoutePattern>, List<BusPoint>);
 
 int a = 0;
 
-class MappedBusData {
-  HashMap<BusRoute, BusRouteData> data;
-  MappedBusData() : data = HashMap();
-
-  void _addEntry(BusRoute route, List<BusRoutePattern> patterns) {
-    data.addEntries([MapEntry(route, (patterns, []))]);
-  }
-
-  void _removeEntry(String routeKey) {
-    data.remove(routeKey);
-  }
-
-  // Will throw an error if pattern is empty for this route. In addition it will not add the route
-  Future<void> addRouteAndRetrieveData(BusRoute route) async {
-    List<BusRoutePattern> patterns = await getRoutePatterns(route.key);
-    List<BusPoint> points = [];
-    if (patterns.isEmpty) {
-      throw Exception('Empty patterns for route ${route.name}');
-    }
-    if (routes.any((element) => element.key == route.key)) {
-      data[route.key]?.$1.addAll(patterns);
-    } else {
-      _addEntry(route, patterns);
-    }
-    logger.t('Added route ${route.name} with ${patterns.length} patterns and '
-        '${points.length} points');
-  }
-
-  int numOfRoutes() {
-    return data.length;
-  }
-
-  BusRoute? route(String key) {
-    return data.keys.firstWhereOrNull((element) => element.key == key);
-  }
-
-  List<BusRoutePattern>? patterns(String key) {
-    return data[route(key)]?.$1;
-  }
-
-  Future<List<BusPoint>?> points(String key) async {
-    if (data[route(key)]?.$2.isEmpty ?? false) {
-      List<Future<void>> futures = [];
-      for (BusRoutePattern pattern in patterns(key) ?? []) {
-        futures.add(getPatternPoints(pattern.key).then((p) {
-          if (p.isEmpty) {
-            logger.e('Empty points for pattern ${pattern.name}');
-          }
-          logger.t('Adding ${p.length} points for pattern ${pattern.name}');
-          data[route(key)]?.$2.addAll(p);
-        }));
-      }
-      await Future.wait(futures);
-    }
-    return data[route(key)]?.$2;
-  }
-  // Future<void> retrievePoints(String key) async {
-  //   if (data[route(key)]?.$2.isEmpty ?? false) {
-  //     List<Future<void>> futures = [];
-  //     for (BusRoutePattern pattern in patterns(key) ?? []) {
-  //       futures.add(getPatternPoints(pattern.key).then((p) {
-  //         if (p.isEmpty) {
-  //           logger.e('Empty points for pattern ${pattern.name}');
-  //         }
-  //         logger.t('Adding ${p.length} points for pattern ${pattern.name}');
-  //         data[route(key)]?.$2.addAll(p);
-  //       }));
-  //     }
-  //     await Future.wait(futures);
-  //   }
-  // }
-
-  List<BusPoint>? forceGetPoints(String key) {
-    return data[route(key)]?.$2;
-  }
-
-  List<BusRoute> get routes {
-    return data.keys.toList().sortedBy((element) => element.shortName);
-  }
-
-  Color getRouteColor(String key) {
-    if (patterns(key)?.isEmpty ?? false) return Colors.black;
-    return hexToColor(patterns(key)?.first.lineDisplayInfo.color ?? "#000000");
-  }
-
-  bool emptyRouteData() {
-    if (routes.isEmpty) return true;
-    for (var element in data.values) {
-      if (element.$1.isEmpty) {
-        return true;
-      }
-    }
-    return false;
-  }
-}
-
 class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
-  String? currRouteKey;
+  RouteStateManager routeStateManager = RouteStateManager();
   String? loadingStatus;
   bool? isLoading = false;
 
-  Map<int, MappedBusData> routeData = {
-    RouteGroups.onCampus.index: MappedBusData(),
-    RouteGroups.offCampus.index: MappedBusData(),
-    RouteGroups.gameday.index: MappedBusData(),
-  };
-  final MappedBusData _favorites = MappedBusData();
-  int currRouteGroup = 0;
-
-  List<Bus>? buses = [];
   Timer? timer;
 
   AppleMapController? mapController;
@@ -183,11 +78,18 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       setState(() {
         logger.i('App resumed');
-        if (currRouteKey != null) {
-          startBusPolling(withMessage: 'from resume');
+        if (routeStateManager.routeSelected) {
+          timer?.cancel();
+          isLoading = true;
+          rebuildConnectionAndStartPolling();
         }
       });
     }
+  }
+
+  Future<void> rebuildConnectionAndStartPolling() async {
+    await rebuildConnection();
+    startBusPolling();
   }
 
   @override
@@ -199,9 +101,32 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         isLoading = true;
       });
       await startServerConnection();
-      initRoutes();
+      routeStateManager.changeRouteGroup(
+          routeStateManager.currRouteGroup, setCurrentStateBasedOnRouteStatus);
+      setState(() {
+        isLoading = false;
+      });
     });
     WidgetsBinding.instance.addObserver(this);
+  }
+
+  void setCurrentStateBasedOnRouteStatus(RouteStateManagerLoadingStat status) {
+    switch (status) {
+      case RouteStateManagerLoadingStat.loading:
+        setState(() {
+          loadingStatus = "";
+        });
+        break;
+      case RouteStateManagerLoadingStat.loadingMore:
+        setState(() {
+          loadingStatus = AppLocalizations.of(context)!.busRouteLoadingStatus;
+        });
+        break;
+      case RouteStateManagerLoadingStat.done:
+        setState(() {
+          loadingStatus = null;
+        });
+    }
   }
 
   @override
@@ -215,99 +140,32 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       isLoading = true;
     });
     initBusDirectionIcon();
-    prefs = await SharedPreferences.getInstance();
-    final List<BusRoute> favorites = (prefs.getStringList('favorites') ?? [])
-        .map((e) => BusRoute.fromJson(jsonDecode(e)))
-        .toList();
-    if (favorites.isNotEmpty) {
-      currRouteGroup = -1;
-      _favorites.data.addEntries(favorites.map((e) => MapEntry(e, ([], []))));
-    }
+    await routeStateManager.loadFavorites();
     setState(() {
       isLoading = false;
     });
   }
 
-  void saveFavorites() {
-    prefs.setStringList(
-        'favorites', _favorites.routes.map((e) => jsonEncode(e)).toList());
-  }
-
-  MappedBusData get busData {
-    if (currRouteGroup < 0) {
-      return _favorites;
-    }
-    return routeData[currRouteGroup]!;
-  }
-
-  void initRoutes() async {
-    if (!busData.emptyRouteData()) {
-      return;
-    }
-    List<Future<void>> futures = [];
-    if (currRouteGroup < 0) {
-      for (BusRoute route in _favorites.routes) {
-        futures.add(busData
-            .addRouteAndRetrieveData(route)
-            .then((value) => setState(() {
-                  loadingStatus =
-                      AppLocalizations.of(context)!.busRouteLoadingStatus;
-                }))
-            .onError((error, stackTrace) {
-          logger.e(
-              'Error adding route ${route.name}, failed with "$error", removing favorite');
-          _favorites.routes.remove(route);
-          saveFavorites();
-        }));
-      }
-    } else {
-      await getRouteByGroup(RouteGroups.values[currRouteGroup])
-          .then((routes) async {
-        for (BusRoute route in routes) {
-          futures.add(busData
-              .addRouteAndRetrieveData(route)
-              .then((value) => setState(() {
-                    isLoading = false;
-                    loadingStatus =
-                        AppLocalizations.of(context)!.busRouteLoadingStatus;
-                  }))
-              .onError((error, stackTrace) {
-            logger.e('Error adding route ${route.name}, failed with "$error"');
-          }));
-        }
-      });
-    }
-
-    await Future.wait(futures);
-    setState(() {
-      loadingStatus = null;
-      isLoading = false;
-    });
-  }
+  MappedBusData get busData => routeStateManager.busData;
+  List<Bus>? get buses => routeStateManager.buses;
 
   final _waitDuration = const Duration(seconds: 4);
   // This function assumes currRoute is not null
   Future<void> pollBus(BusRoute currRoute) async {
-    logger.i('Polling bus ${currRoute.name}');
-    buses = await getBuses(currRoute.shortName);
-    logger.i('Got ${buses?.length} buses');
+    logger.t('Polling bus ${currRoute.name}');
+    await routeStateManager.retrieveBuses();
+    logger.t('Got ${buses?.length} buses');
     setState(() {});
   }
 
-  // This function assumes currRoute is not null
   Future<void> startBusPolling({String withMessage = ''}) async {
-    BusRoute? currRoute = busData.route(currRouteKey!);
-
-    if (currRoute == null) {
-      logger.e('currRoute is null!');
-      return;
-    }
+    BusRoute? currRoute = routeStateManager.currBusRoute;
 
     setState(() {
       isLoading = true;
     });
     mapController?.animateCamera(CameraUpdate.newLatLngBounds(
-        calculateLatLngFromBusPoints(await busData.points(currRoute.key) ?? []),
+        calculateLatLngFromBusPoints(await routeStateManager.retrievePoints()),
         70));
     logger.t('Starting bus polling for route ${currRoute.name}');
     bool complete = true;
@@ -329,39 +187,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     });
   }
 
-  void onRouteSelected(String routeKey) async {
-    currRouteKey = routeKey;
+  void routeSelected(String routeKey) async {
+    routeStateManager.changeRoute(routeKey);
     logger.t('Selected route $routeKey');
     await startBusPolling();
-  }
-
-  Widget _generateBusRouteWidget(BusRoute route) {
-    Color routeColor = busData.getRouteColor(route.key);
-    Color textColor =
-        routeColor.computeLuminance() > 0.5 ? Colors.black : Colors.white;
-    return Expanded(
-        child: ElevatedButton(
-            onPressed: () => onRouteSelected(route.key),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.all(15),
-              backgroundColor: routeColor,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-            child: Column(
-              children: [
-                Text(route.name,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: textColor)),
-                Text(
-                  route.shortName,
-                  style: TextStyle(
-                      color: textColor,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold),
-                ),
-              ],
-            )));
   }
 
   Widget _buildPanel(ScrollController sc) {
@@ -370,28 +199,30 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       twoByTwoBusRouteWidgets.add(Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _generateBusRouteWidget(busData.routes[i]),
+          BusRouteWidget(
+              busData: busData,
+              route: busData.routes[i],
+              onRouteSelected: routeSelected),
           if (i + 1 < busData.routes.length) const SizedBox(width: 20),
           if (i + 1 < busData.routes.length)
-            _generateBusRouteWidget(busData.routes[i + 1]),
+            BusRouteWidget(
+                busData: busData,
+                route: busData.routes[i + 1],
+                onRouteSelected: routeSelected),
         ],
       ));
       twoByTwoBusRouteWidgets.add(const SizedBox(height: 20));
     }
 
-    final List<int> items = [];
-    if (_favorites.routes.isNotEmpty) {
-      items.insert(0, -1);
-    }
-    for (var element in RouteGroups.values) {
-      items.add(element.index);
-    }
-
     getGroupNameFromIndex(int index) {
-      if (index < 0) {
-        return 'Favorites';
+      if (index == RouteStateManager.favoritesIndex) {
+        return AppLocalizations.of(context)!.favorites;
       } else {
-        return RouteGroups.values[index].name;
+        return [
+          AppLocalizations.of(context)!.onCampus,
+          AppLocalizations.of(context)!.offCampus,
+          AppLocalizations.of(context)!.gameday
+        ][index];
       }
     }
 
@@ -410,17 +241,20 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                       style: Theme.of(context).textTheme.displaySmall),
                   DropdownButton(
                       borderRadius: BorderRadius.circular(10),
-                      items: items
+                      items: routeStateManager.groupIndices
                           .map((group) => DropdownMenuItem(
                               key: Key(getGroupNameFromIndex(group)),
                               value: group,
                               child: Text(getGroupNameFromIndex(group))))
                           .toList(),
-                      value: currRouteGroup,
-                      onChanged: (value) => setState(() {
-                            currRouteGroup = value as int;
-                            initRoutes();
-                          })),
+                      value: routeStateManager.currRouteGroup,
+                      onChanged: (value) {
+                        setState(() {
+                          timer?.cancel();
+                        });
+                        routeStateManager.changeRouteGroup(
+                            value, setCurrentStateBasedOnRouteStatus);
+                      })
                 ],
               ),
               const SizedBox(height: 20),
@@ -434,16 +268,16 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   final double _initFabHeight = 120.0;
   double _fabHeight = 0;
   double _panelHeightOpen = 0;
-  double _panelHeightClosed = 95.0;
+  final double _panelHeightClosed = 95.0;
 
   //TODO: Add button to slide up bottom panel programmatically
   @override
   Widget build(BuildContext context) {
     _panelHeightOpen = MediaQuery.of(context).size.height * .80;
-    if (buses?.isEmpty ?? false) {
-      buses =
-          _generateTestBusInDebug() != null ? [_generateTestBusInDebug()!] : [];
-    }
+    // if (buses?.isEmpty ?? false) {
+    //   buses =
+    //       _generateTestBusInDebug() != null ? [_generateTestBusInDebug()!] : [];
+    // }
     return Stack(children: [
       Scaffold(
         key: scaffoldKey,
@@ -481,9 +315,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             minHeight: _panelHeightClosed,
             backdropEnabled: true,
             panelBuilder: (sc) => _buildPanel(sc),
-            body: AppleMaps(
-                busData.forceGetPoints(currRouteKey ?? "") ?? [], buses ?? [],
-                routeColor: busData.getRouteColor(currRouteKey ?? ""),
+            body: AppleMaps(routeStateManager.points,
+                buses: buses ?? [], routeColor: routeStateManager.routeColor,
                 onMapCreated: (AppleMapController controller) {
               mapController = controller;
             }),
@@ -495,48 +328,83 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                   _initFabHeight;
             }),
           ),
-          currRouteKey == null
-              ? Container()
-              : Positioned(
+          routeStateManager.routeSelected
+              ? Positioned(
                   right: 20.0,
                   bottom: _fabHeight,
                   child: FloatingActionButton(
                     onPressed: () {
                       setState(() {
-                        logger.i(_favorites.routes
-                            .any((element) => element.key == currRouteKey));
-                        if (_favorites.routes
-                            .any((element) => element.key == currRouteKey)) {
-                          _favorites._removeEntry(currRouteKey!);
-                          if (_favorites.routes.isEmpty) {
-                            currRouteGroup = RouteGroups.values.first.index;
-                          }
+                        if (routeStateManager.isCurrentRouteFavorite()) {
+                          routeStateManager
+                              .unFavorite(setCurrentStateBasedOnRouteStatus);
                         } else {
-                          _favorites._addEntry(busData.route(currRouteKey!)!,
-                              busData.patterns(currRouteKey!)!);
+                          routeStateManager.favorite();
                         }
-                        saveFavorites();
                       });
                     },
                     backgroundColor: Colors.white,
                     child: Icon(
-                      _favorites.routes
-                              .any((element) => element.key == currRouteKey)
+                      routeStateManager.isCurrentRouteFavorite()
                           ? Icons.star
                           : Icons.star_border_outlined,
                       color: Theme.of(context).primaryColor,
                     ),
                   ),
-                ),
+                )
+              : Container()
         ]),
       ),
-      if (busData.numOfRoutes() == 0 || isLoading == true)
+      if (busData.routes.isEmpty || isLoading == true || loadingStatus == "")
         ModalBarrier(dismissible: false, color: Colors.black.withAlpha(100)),
-      if (busData.numOfRoutes() == 0 || isLoading == true)
+      if (busData.routes.isEmpty || isLoading == true || loadingStatus == "")
         const Center(
           child: CircularProgressIndicator(),
         ),
     ]);
+  }
+}
+
+class BusRouteWidget extends StatelessWidget {
+  const BusRouteWidget({
+    super.key,
+    required this.busData,
+    required this.route,
+    required this.onRouteSelected,
+  });
+
+  final MappedBusData busData;
+  final BusRoute route;
+  final Function(String p1) onRouteSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    Color routeColor = busData.getRouteColor(route.key);
+    Color textColor =
+        routeColor.computeLuminance() > 0.5 ? Colors.black : Colors.white;
+    return Expanded(
+        child: ElevatedButton(
+            onPressed: () => onRouteSelected(route.key),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.all(15),
+              backgroundColor: routeColor,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Column(
+              children: [
+                Text(route.name,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: textColor)),
+                Text(
+                  route.shortName,
+                  style: TextStyle(
+                      color: textColor,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold),
+                ),
+              ],
+            )));
   }
 }
 

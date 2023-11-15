@@ -1,5 +1,11 @@
 {
   "homePageTitle": "TAMU大学校车地图",
   "busRouteSelectionMenuTitle": "路线",
-  "busRouteLoadingStatus": "正在加载路线..."
+  "busRouteLoadingStatus": "正在加载路线...",
+  "favorites": "收藏",
+  "onCampus": "校内",
+  "offCampus": "郊外",
+  "gameday": "比赛日",
+  "nextStop": "下一站",
+  "percentFull": "{percent}满了"
 }

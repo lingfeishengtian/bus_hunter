@@ -6,7 +6,7 @@ packages:
     description:
       path: "."
       ref: master
-      resolved-ref: "21c437eca350c01d5eee16c812955d0a7384e901"
+      resolved-ref: "7b152f77989f9f7917d9591d4c5cce0bc25604d1"
       url: "https://github.com/lingfeishengtian/apple_maps_flutter.git"
     source: git
     version: "1.2.0"
