@@ -1,16 +1,10 @@
-# bus_hunter
+# TAMU Bus Hunter
 
-A new Flutter project.
+A bus tracking app for Texas A&M University.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- Track buses in real time
+- View bus routes on a map
+- View bus stops on a map
+- Save favorite bus routes

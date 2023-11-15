@@ -7,5 +7,9 @@
   "offCampus": "郊外",
   "gameday": "比赛日",
   "nextStop": "下一站",
-  "percentFull": "{percent}满了"
+  "percentFull": "{percent}满了",
+  "timetable": "时间表",
+  "showExpiredTimes": "显示过期时间",
+  "date": "日期",
+  "noBusServiceFound": "没有找到校车服务"
 }

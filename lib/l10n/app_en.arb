@@ -34,5 +34,21 @@
   "percentFull": "{percent} full",
   "@percentFull": {
     "description": "The percent full of the bus"
+  },
+  "timetable": "Timetable",
+  "@timetable": {
+    "description": "Timetable dropdown option"
+  },
+  "showExpiredTimes": "Show Expired Times",
+  "@showExpiredTimes": {
+    "description": "Show Expired Times switch option"
+  },
+  "date": "Date",
+  "@date": {
+    "description": "Date descriptor"
+  },
+  "noBusServiceFound": "No bus service found",
+  "@noBusServiceFound": {
+    "description": "No bus service found message"
   }
 }

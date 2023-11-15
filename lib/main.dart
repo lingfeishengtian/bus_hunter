@@ -1,12 +1,11 @@
 import 'dart:async';
-import 'dart:collection';
 import 'package:bus_hunter/mapped_bus_data.dart';
 import 'package:bus_hunter/route_state_manager.dart';
-import 'package:collection/collection.dart';
 import 'package:apple_maps_flutter/apple_maps_flutter.dart';
 import 'package:bus_hunter/api/bus_api.dart';
 import 'package:bus_hunter/api/bus_obj.dart';
 import 'package:bus_hunter/map/apple_maps.dart';
+import 'package:bus_hunter/timetable.dart';
 import 'package:bus_hunter/utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -333,6 +332,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                   right: 20.0,
                   bottom: _fabHeight,
                   child: FloatingActionButton(
+                    heroTag: 'favorite',
                     onPressed: () {
                       setState(() {
                         if (routeStateManager.isCurrentRouteFavorite()) {
@@ -348,6 +348,40 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                       routeStateManager.isCurrentRouteFavorite()
                           ? Icons.star
                           : Icons.star_border_outlined,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  ),
+                )
+              : Container(),
+          routeStateManager.routeSelected
+              ? Positioned(
+                  right: 20.0,
+                  top: MediaQuery.of(context).viewPadding.top,
+                  child: FloatingActionButton(
+                    heroTag: 'timetable',
+                    onPressed: () {
+                      setState(() {
+                        isLoading = true;
+                        timer?.cancel();
+                      });
+                      Navigator.of(context)
+                          .push(PageRouteBuilder(
+                        opaque: false,
+                        pageBuilder: (context, _, __) {
+                          return TimeTable(
+                              routeShortName:
+                                  routeStateManager.currBusRoute.shortName);
+                        },
+                      ))
+                          .then((value) {
+                        setState(() {
+                          rebuildConnectionAndStartPolling();
+                        });
+                      });
+                    },
+                    backgroundColor: Colors.white,
+                    child: Icon(
+                      Icons.calendar_month_outlined,
                       color: Theme.of(context).primaryColor,
                     ),
                   ),

@@ -421,3 +421,20 @@ class BusOpStatus {
     );
   }
 }
+
+class BusTimeTable {
+  final String destination;
+  final String html;
+
+  BusTimeTable({
+    required this.destination,
+    required this.html,
+  });
+
+  factory BusTimeTable.fromJson(Map<String, dynamic> json) {
+    return BusTimeTable(
+      destination: json['destination'],
+      html: json['html'],
+    );
+  }
+}

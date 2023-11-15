@@ -7,50 +7,70 @@ final _signalRLogger = logger;
 final httpConnectionOptions = HttpConnectionOptions(
   logging: (level, message) => _signalRLogger.t(message),
   skipNegotiation: false,
-  transport: HttpTransportType.longPolling,
+  transport: HttpTransportType.serverSentEvents,
 );
-final _builder = HubConnectionBuilder()
+final _builderMapHub = HubConnectionBuilder()
     .withHubProtocol(JsonHubProtocol())
-    .withUrl("https://transport.tamu.edu/busroutes.web/mapHub")
+    .withUrl("https://transport.tamu.edu/busroutes.web/mapHub",
+        httpConnectionOptions)
     .withAutomaticReconnect([0, 1000, 2000]);
-var _connection = _builder.build();
+final _builderTimeHub = HubConnectionBuilder()
+    .withHubProtocol(JsonHubProtocol())
+    .withUrl("https://transport.tamu.edu/busroutes.web/timeHub",
+        httpConnectionOptions)
+    .withAutomaticReconnect([0, 1000, 2000]);
+var _connectionMapHub = _builderMapHub.build();
+var _connectionTimeHub = _builderMapHub.build();
 
-Future<void> rebuildConnection() async {
-  _connection = _builder.build();
-  await _startServerConnection();
+enum Hub { map, time }
+
+Future<void> rebuildConnection({Hub hub = Hub.map}) async {
+  if (hub == Hub.map) {
+    _connectionMapHub = _builderMapHub.build();
+    await _startServerConnection(hub);
+  } else {
+    _connectionTimeHub = _builderTimeHub.build();
+    await _startServerConnection(hub);
+  }
 }
 
-Future<void> _startServerConnection() async {
-  if (_connection.state == HubConnectionState.disconnected) {
+Future<void> _startServerConnection(Hub hub) async {
+  final connection = hub == Hub.map ? _connectionMapHub : _connectionTimeHub;
+  if (connection.state == HubConnectionState.disconnected) {
     try {
-      await _connection.start()?.timeout(const Duration(seconds: 10),
+      await connection.start()?.timeout(const Duration(seconds: 10),
           onTimeout: () async {
         _signalRLogger.e('Timeouot on connection');
       });
-      if (_connection.state == HubConnectionState.connected) {
+      if (connection.state == HubConnectionState.connected) {
         _signalRLogger.d('Connected to SignalR server');
       } else {
         _signalRLogger
             .e('Failed to connect to SignalR server, trying again...');
         await Future.delayed(const Duration(milliseconds: 1000), () {});
-        return await rebuildConnection();
+        return await rebuildConnection(hub: hub);
       }
     } catch (e) {
       _signalRLogger.e(e);
       _signalRLogger.e('Failed to connect to SignalR server, trying again...');
 
       await Future.delayed(const Duration(milliseconds: 1000), () {});
-      return await _startServerConnection();
+      return await startServerConnection(hub: hub);
     }
   }
 }
 
-Future<void> startServerConnection() async {
-  await _startServerConnection();
+Future<void> startServerConnection({Hub hub = Hub.map}) async {
+  if (hub == Hub.map) {
+    await _startServerConnection(hub);
+  } else {
+    await _startServerConnection(hub);
+  }
 }
 
 int instances = 0;
-Future<dynamic> _invokeMethod(String method, List<String> args) async {
+Future<dynamic> _invokeMethod(String method, List<String> args,
+    [Hub h = Hub.map]) async {
   while (instances > 4) {
     await Future.delayed(const Duration(milliseconds: 100), () {});
   }
@@ -59,8 +79,12 @@ Future<dynamic> _invokeMethod(String method, List<String> args) async {
   while (val == null) {
     try {
       _signalRLogger.t('Invoking $method with args $args');
-      await startServerConnection();
-      val = _connection.invoke(method, args: args);
+      await startServerConnection(hub: h);
+      if (h == Hub.map) {
+        val = _connectionMapHub.invoke(method, args: args);
+      } else {
+        val = _connectionTimeHub.invoke(method, args: args);
+      }
       val = val as List<dynamic>;
     } catch (e) {
       await Future.delayed(const Duration(seconds: 1), () {});
@@ -105,4 +129,14 @@ Future<List<BusRoute>> getRouteByGroup(RouteGroups g) async {
 Future<List<Bus>> getBuses(String arg) async {
   final List<dynamic> buses = await _invokeMethod('GetBuses', [arg]);
   return buses.map((e) => Bus.fromJson(e)).toList();
+}
+
+// Date is in the format YYYY-MM-DD
+Future<List<BusTimeTable>> getTimeTable(
+    String routeShortName, String date) async {
+  _connectionTimeHub = _builderTimeHub.build();
+  List<dynamic> ret =
+      (await _invokeMethod('GetTimeTable', [routeShortName, date], Hub.time)
+          as Map<String, dynamic>)['jsonTimeTableList'] as List<dynamic>;
+  return ret.map((e) => BusTimeTable.fromJson(e)).toList();
 }

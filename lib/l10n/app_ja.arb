@@ -7,5 +7,9 @@
   "offCampus": "郊外",
   "gameday": "ゲームデイ",
   "nextStop": "次の停留所",
-  "percentFull": "バスの乗車率{percent}"
+  "percentFull": "バスの乗車率{percent}",
+  "timetable": "時刻表",
+  "showExpiredTimes": "過去の時刻を表示する",
+  "date": "日付入力",
+  "noBusServiceFound": "バスの平常運転が見つかりませんでした"
 }
