@@ -106,6 +106,7 @@ class RouteStateManager {
       }).onError((error, stackTrace) {
         logger.e(
             'Error adding route ${route.name}, failed with "$error", removing favorite if it exists');
+        print(stackTrace.toString());
         if (_isCurrGroupFavorite) {
           busData.routes.remove(route);
           saveFavorites();

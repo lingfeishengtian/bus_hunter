@@ -15,7 +15,7 @@ import 'package:logger/logger.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 
 void main() {
-  Logger.level = Level.info;
+  Logger.level = Level.debug;
   runApp(const MyApp());
 }
 
@@ -81,8 +81,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           timer?.cancel();
           isLoading = true;
           rebuildConnectionAndStartPolling();
-          // run in background to prepare
-          rebuildConnection(hub: Hub.time);
         }
       });
     }
@@ -102,8 +100,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         isLoading = true;
       });
       await startServerConnection();
-      // run in background to prepare
-      startServerConnection(hub: Hub.time);
       routeStateManager.changeRouteGroup(
           routeStateManager.currRouteGroup, setCurrentStateBasedOnRouteStatus);
       setState(() {
@@ -278,6 +274,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   //TODO: Add button to slide up bottom panel programmatically
   @override
   Widget build(BuildContext context) {
+    // logger.d('${isLoading} ${loadingStatus}');
     _panelHeightOpen = MediaQuery.of(context).size.height * .80;
     // if (buses?.isEmpty ?? false) {
     //   buses =

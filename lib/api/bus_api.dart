@@ -19,33 +19,23 @@ final _builderTimeHub = HubConnectionBuilder()
     .withUrl("https://transport.tamu.edu/busroutes.web/timeHub",
         httpConnectionOptions)
     .withAutomaticReconnect([0, 1000, 2000]);
-var _connectionMapHub = _builderMapHub.build();
-var _connectionTimeHub = _builderTimeHub.build();
+// var _connectionMapHub = _builderMapHub.build();
+// var _connectionTimeHub = _builderTimeHub.build();
+var _connection = _builderMapHub.build();
+var _currHub = Hub.map;
 
 enum Hub { map, time }
 
-Future<void> rebuildConnection({Hub hub = Hub.map}) async {
-  if (hub == Hub.map) {
-    if (_connectionMapHub.state == HubConnectionState.disconnected ||
-        _connectionMapHub.state == HubConnectionState.disconnecting) {
-      _connectionMapHub = _builderMapHub.build();
-      await _startServerConnection(hub);
-    }
-  } else {
-    if (_connectionTimeHub.state == HubConnectionState.disconnected ||
-        _connectionTimeHub.state == HubConnectionState.disconnecting) {
-      _connectionTimeHub = _builderTimeHub.build();
-      await _startServerConnection(hub);
-    }
-  }
-}
-
 Future<void> _startServerConnection(Hub hub) async {
-  final connection = hub == Hub.map ? _connectionMapHub : _connectionTimeHub;
-  if (connection.state == HubConnectionState.disconnected) {
+  if (_currHub != hub) {
+    _currHub = hub;
+    _connection =
+        hub == Hub.map ? _builderMapHub.build() : _builderTimeHub.build();
+  }
+  if (_connection.state == HubConnectionState.disconnected) {
     try {
       bool timeout = false;
-      await connection.start()?.timeout(const Duration(seconds: 10),
+      await _connection.start()?.timeout(const Duration(seconds: 10),
           onTimeout: () {
         _signalRLogger.e('Timeout on connection');
         timeout = true;
@@ -53,23 +43,33 @@ Future<void> _startServerConnection(Hub hub) async {
       if (timeout) {
         _signalRLogger
             .e('Failed to connect to SignalR server, trying again...');
-        return await startServerConnection(hub: hub);
+        await rebuildConnection(hub: hub);
       }
-      // if (connection.state == HubConnectionState.connected) {
-      //   _signalRLogger.d('Connected to SignalR server');
-      // } else {
-      //   _signalRLogger
-      //       .e('Failed to connect to SignalR server, trying again...');
-      //   await Future.delayed(const Duration(milliseconds: 1000), () {});
-      //   return await rebuildConnection(hub: hub);
-      // }
+      if (_connection.state == HubConnectionState.connected) {
+        _signalRLogger.d('Connected to SignalR server');
+      } else {
+        _signalRLogger
+            .e('Failed to connect to SignalR server, trying again...');
+        await Future.delayed(const Duration(milliseconds: 100), () {});
+        await _startServerConnection(hub);
+      }
     } catch (e) {
       _signalRLogger.e(e);
       _signalRLogger.e('Failed to connect to SignalR server, trying again...');
 
-      await Future.delayed(const Duration(milliseconds: 1000), () {});
-      return await startServerConnection(hub: hub);
+      await Future.delayed(const Duration(milliseconds: 100), () {});
+      await _startServerConnection(hub);
     }
+  }
+}
+
+Future<void> rebuildConnection({Hub hub = Hub.map}) async {
+  if (hub == Hub.map) {
+    _connection = _builderMapHub.build();
+    await _startServerConnection(hub);
+  } else {
+    _connection = _builderTimeHub.build();
+    await _startServerConnection(hub);
   }
 }
 
@@ -93,11 +93,7 @@ Future<dynamic> _invokeMethod(String method, List<String> args,
     try {
       _signalRLogger.t('Invoking $method with args $args');
       await startServerConnection(hub: h);
-      if (h == Hub.map) {
-        val = _connectionMapHub.invoke(method, args: args);
-      } else {
-        val = _connectionTimeHub.invoke(method, args: args);
-      }
+      val = _connection.invoke(method, args: args);
       val = val as List<dynamic>;
     } catch (e) {
       await Future.delayed(const Duration(seconds: 1), () {});
