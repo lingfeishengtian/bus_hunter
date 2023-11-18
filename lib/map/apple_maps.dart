@@ -55,7 +55,7 @@ class AppleMaps extends StatelessWidget {
                     title:
                         "${AppLocalizations.of(context)!.nextStop}: ${bus.nextStopDeparture.stopName}",
                     snippet: AppLocalizations.of(context)!.percentFull(
-                        "${bus.passengerLoad.toDouble() / (bus.passengerCapacity != 0 ? bus.passengerCapacity.toDouble() : 1.0) * 100}%")),
+                        "${(bus.passengerLoad.toDouble() / (bus.passengerCapacity != 0 ? bus.passengerCapacity.toDouble() : 1.0) * 100).round()}%")),
                 position: LatLng(bus.location.latitude, bus.location.longitude),
                 anchor: const Offset(0.5, 0.5),
                 icon: img,

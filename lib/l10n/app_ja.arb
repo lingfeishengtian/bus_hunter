@@ -4,7 +4,7 @@
   "busRouteLoadingStatus": "路線をロード中...",
   "favorites": "お気に入り",
   "onCampus": "校内",
-  "offCampus": "郊外",
+  "offCampus": "校外",
   "gameday": "ゲームデイ",
   "nextStop": "次の停留所",
   "percentFull": "バスの乗車率{percent}",

@@ -81,6 +81,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           timer?.cancel();
           isLoading = true;
           rebuildConnectionAndStartPolling();
+          // run in background to prepare
+          rebuildConnection(hub: Hub.time);
         }
       });
     }
@@ -100,6 +102,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         isLoading = true;
       });
       await startServerConnection();
+      // run in background to prepare
+      startServerConnection(hub: Hub.time);
       routeStateManager.changeRouteGroup(
           routeStateManager.currRouteGroup, setCurrentStateBasedOnRouteStatus);
       setState(() {
@@ -189,6 +193,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   void routeSelected(String routeKey) async {
     routeStateManager.changeRoute(routeKey);
     logger.t('Selected route $routeKey');
+    panelController.close();
     await startBusPolling();
   }
 
@@ -264,6 +269,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   var scaffoldKey = GlobalKey<ScaffoldState>();
+  final PanelController panelController = PanelController();
   final double _initFabHeight = 120.0;
   double _fabHeight = 0;
   double _panelHeightOpen = 0;
@@ -314,6 +320,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             minHeight: _panelHeightClosed,
             backdropEnabled: true,
             panelBuilder: (sc) => _buildPanel(sc),
+            controller: panelController,
             body: AppleMaps(routeStateManager.points,
                 buses: buses ?? [], routeColor: routeStateManager.routeColor,
                 onMapCreated: (AppleMapController controller) {
@@ -331,62 +338,59 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               ? Positioned(
                   right: 20.0,
                   bottom: _fabHeight,
-                  child: FloatingActionButton(
-                    heroTag: 'favorite',
-                    onPressed: () {
-                      setState(() {
-                        if (routeStateManager.isCurrentRouteFavorite()) {
-                          routeStateManager
-                              .unFavorite(setCurrentStateBasedOnRouteStatus);
-                        } else {
-                          routeStateManager.favorite();
-                        }
-                      });
-                    },
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      routeStateManager.isCurrentRouteFavorite()
-                          ? Icons.star
-                          : Icons.star_border_outlined,
-                      color: Theme.of(context).primaryColor,
+                  child: Row(children: [
+                    FloatingActionButton(
+                      heroTag: 'timetable',
+                      onPressed: () {
+                        setState(() {
+                          isLoading = true;
+                          timer?.cancel();
+                        });
+                        Navigator.of(context)
+                            .push(PageRouteBuilder(
+                          opaque: false,
+                          pageBuilder: (context, _, __) {
+                            return TimeTable(
+                                routeShortName:
+                                    routeStateManager.currBusRoute.shortName);
+                          },
+                        ))
+                            .then((value) {
+                          setState(() {
+                            rebuildConnectionAndStartPolling();
+                          });
+                        });
+                      },
+                      backgroundColor: Colors.white,
+                      child: Icon(
+                        Icons.calendar_month_outlined,
+                        color: Theme.of(context).primaryColor,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 10),
+                    FloatingActionButton(
+                      heroTag: 'favorite',
+                      onPressed: () {
+                        setState(() {
+                          if (routeStateManager.isCurrentRouteFavorite()) {
+                            routeStateManager
+                                .unFavorite(setCurrentStateBasedOnRouteStatus);
+                          } else {
+                            routeStateManager.favorite();
+                          }
+                        });
+                      },
+                      backgroundColor: Colors.white,
+                      child: Icon(
+                        routeStateManager.isCurrentRouteFavorite()
+                            ? Icons.star
+                            : Icons.star_border_outlined,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                    ),
+                  ]),
                 )
               : Container(),
-          routeStateManager.routeSelected
-              ? Positioned(
-                  right: 20.0,
-                  top: MediaQuery.of(context).viewPadding.top,
-                  child: FloatingActionButton(
-                    heroTag: 'timetable',
-                    onPressed: () {
-                      setState(() {
-                        isLoading = true;
-                        timer?.cancel();
-                      });
-                      Navigator.of(context)
-                          .push(PageRouteBuilder(
-                        opaque: false,
-                        pageBuilder: (context, _, __) {
-                          return TimeTable(
-                              routeShortName:
-                                  routeStateManager.currBusRoute.shortName);
-                        },
-                      ))
-                          .then((value) {
-                        setState(() {
-                          rebuildConnectionAndStartPolling();
-                        });
-                      });
-                    },
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.calendar_month_outlined,
-                      color: Theme.of(context).primaryColor,
-                    ),
-                  ),
-                )
-              : Container()
         ]),
       ),
       if (busData.routes.isEmpty || isLoading == true || loadingStatus == "")

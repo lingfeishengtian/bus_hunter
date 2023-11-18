@@ -20,17 +20,23 @@ final _builderTimeHub = HubConnectionBuilder()
         httpConnectionOptions)
     .withAutomaticReconnect([0, 1000, 2000]);
 var _connectionMapHub = _builderMapHub.build();
-var _connectionTimeHub = _builderMapHub.build();
+var _connectionTimeHub = _builderTimeHub.build();
 
 enum Hub { map, time }
 
 Future<void> rebuildConnection({Hub hub = Hub.map}) async {
   if (hub == Hub.map) {
-    _connectionMapHub = _builderMapHub.build();
-    await _startServerConnection(hub);
+    if (_connectionMapHub.state == HubConnectionState.disconnected ||
+        _connectionMapHub.state == HubConnectionState.disconnecting) {
+      _connectionMapHub = _builderMapHub.build();
+      await _startServerConnection(hub);
+    }
   } else {
-    _connectionTimeHub = _builderTimeHub.build();
-    await _startServerConnection(hub);
+    if (_connectionTimeHub.state == HubConnectionState.disconnected ||
+        _connectionTimeHub.state == HubConnectionState.disconnecting) {
+      _connectionTimeHub = _builderTimeHub.build();
+      await _startServerConnection(hub);
+    }
   }
 }
 
@@ -38,18 +44,25 @@ Future<void> _startServerConnection(Hub hub) async {
   final connection = hub == Hub.map ? _connectionMapHub : _connectionTimeHub;
   if (connection.state == HubConnectionState.disconnected) {
     try {
+      bool timeout = false;
       await connection.start()?.timeout(const Duration(seconds: 10),
-          onTimeout: () async {
-        _signalRLogger.e('Timeouot on connection');
+          onTimeout: () {
+        _signalRLogger.e('Timeout on connection');
+        timeout = true;
       });
-      if (connection.state == HubConnectionState.connected) {
-        _signalRLogger.d('Connected to SignalR server');
-      } else {
+      if (timeout) {
         _signalRLogger
             .e('Failed to connect to SignalR server, trying again...');
-        await Future.delayed(const Duration(milliseconds: 1000), () {});
-        return await rebuildConnection(hub: hub);
+        return await startServerConnection(hub: hub);
       }
+      // if (connection.state == HubConnectionState.connected) {
+      //   _signalRLogger.d('Connected to SignalR server');
+      // } else {
+      //   _signalRLogger
+      //       .e('Failed to connect to SignalR server, trying again...');
+      //   await Future.delayed(const Duration(milliseconds: 1000), () {});
+      //   return await rebuildConnection(hub: hub);
+      // }
     } catch (e) {
       _signalRLogger.e(e);
       _signalRLogger.e('Failed to connect to SignalR server, trying again...');
@@ -134,7 +147,6 @@ Future<List<Bus>> getBuses(String arg) async {
 // Date is in the format YYYY-MM-DD
 Future<List<BusTimeTable>> getTimeTable(
     String routeShortName, String date) async {
-  _connectionTimeHub = _builderTimeHub.build();
   List<dynamic> ret =
       (await _invokeMethod('GetTimeTable', [routeShortName, date], Hub.time)
           as Map<String, dynamic>)['jsonTimeTableList'] as List<dynamic>;
