@@ -15,7 +15,7 @@ class MappedBusData {
     data.addEntries([MapEntry(route, (patterns, []))]);
   }
 
-  void _removeEntry(String routeKey) {
+  void removeEntry(String routeKey) {
     data.remove(routeKey);
   }
 

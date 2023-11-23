@@ -106,10 +106,13 @@ class RouteStateManager {
       }).onError((error, stackTrace) {
         logger.e(
             'Error adding route ${route.name}, failed with "$error", removing favorite if it exists');
-        print(stackTrace.toString());
-        if (_isCurrGroupFavorite) {
-          busData.routes.remove(route);
+        logger.e(stackTrace.toString());
+        if (_routeData[favoritesIndex].data.containsKey(route.key)) {
+          busData.removeEntry(route.key);
           saveFavorites();
+          if (_isCurrGroupFavorite && busData.routes.isEmpty) {
+            changeRouteGroup(RouteGroups.values.first, (p0) => setState);
+          }
         }
       }));
     }
