@@ -47,6 +47,8 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
         useMaterial3: true,
       ),
+      darkTheme: ThemeData.dark(),
+      themeMode: ThemeMode.system,
       home: const MyHomePage(),
     );
   }
@@ -317,6 +319,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             minHeight: _panelHeightClosed,
             backdropEnabled: true,
             panelBuilder: (sc) => _buildPanel(sc),
+            color: Theme.of(context).colorScheme.surface,
             controller: panelController,
             body: AppleMaps(routeStateManager.points,
                 buses: buses ?? [], routeColor: routeStateManager.routeColor,
@@ -358,10 +361,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                           });
                         });
                       },
-                      backgroundColor: Colors.white,
+                      backgroundColor: Theme.of(context).colorScheme.surface,
                       child: Icon(
                         Icons.calendar_month_outlined,
-                        color: Theme.of(context).primaryColor,
+                        color: Theme.of(context).textTheme.titleSmall!.color,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -377,12 +380,12 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                           }
                         });
                       },
-                      backgroundColor: Colors.white,
+                      backgroundColor: Theme.of(context).colorScheme.surface,
                       child: Icon(
                         routeStateManager.isCurrentRouteFavorite()
                             ? Icons.star
                             : Icons.star_border_outlined,
-                        color: Theme.of(context).primaryColor,
+                        color: Theme.of(context).textTheme.titleSmall!.color,
                       ),
                     ),
                   ]),

@@ -176,9 +176,7 @@ class RouteStateManager {
   }
 
   Future<List<Bus>> retrieveBuses() async {
-    if (_currRouteKey == null) {
-      throw Exception('currRouteKey is null');
-    }
+    _currRouteKey ??= busData.routes.first.key;
     buses = await getBuses(busData.route(_currRouteKey!)!.shortName);
     return buses!;
   }
