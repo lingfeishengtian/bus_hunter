@@ -1,25 +1,26 @@
 class BusRoute {
-  final String key;
-  final String name;
-  final String shortName;
-  final String? description;
+  String key;
+  String name;
+  String shortName;
+  List<BusRouteDirection> directionList;
 
   BusRoute({
     required this.key,
     required this.name,
     required this.shortName,
-    this.description,
+    required this.directionList,
   });
-
-  @override
-  int get hashCode => key.hashCode;
 
   factory BusRoute.fromJson(Map<String, dynamic> json) {
     return BusRoute(
       key: json['key'],
       name: json['name'],
       shortName: json['shortName'],
-      description: json['description'],
+      directionList: List<BusRouteDirection>.from(
+        json['directionList'].map(
+          (x) => BusRouteDirection.fromJson(x),
+        ),
+      ),
     );
   }
 
@@ -28,52 +29,95 @@ class BusRoute {
       'key': key,
       'name': name,
       'shortName': shortName,
-      'description': description,
+      'directionList': directionList.map((e) => e.toJson()).toList(),
     };
   }
+}
 
-  @override
-  toString() {
-    return 'BusRoute: {key: $key, name: $name, shortName: $shortName, description: $description}';
+class BusRouteDirection {
+  BusRouteDirection({
+    required this.direction,
+    required this.destination,
+    required this.lineColor,
+    required this.textColor,
+    required this.patternList,
+    required this.serviceInterruptionKeys,
+  });
+
+  BusDirection direction;
+  String destination;
+  String lineColor;
+  String textColor;
+  List<BusRoutePattern> patternList;
+  List<dynamic> serviceInterruptionKeys;
+
+  factory BusRouteDirection.fromJson(Map<String, dynamic> json) {
+    return BusRouteDirection(
+      direction: BusDirection.fromJson(json['direction']),
+      destination: json['destination'],
+      lineColor: json['lineColor'],
+      textColor: json['textColor'],
+      patternList: List<BusRoutePattern>.from(
+        json['patternList'].map(
+          (x) => BusRoutePattern.fromJson(x),
+        ),
+      ),
+      serviceInterruptionKeys: List<dynamic>.from(
+        json['serviceInterruptionKeys'].map(
+          (x) => x,
+        ),
+      ),
+    );
   }
 
-  @override
-  bool operator ==(Object other) {
-    return hashCode == other.hashCode;
+  Map<String, dynamic> toJson() {
+    return {
+      'direction': direction.toJson(),
+      'destination': destination,
+      'lineColor': lineColor,
+      'textColor': textColor,
+      'patternList': patternList.map((e) => e.toJson()).toList(),
+      'serviceInterruptionKeys': serviceInterruptionKeys,
+    };
+  }
+}
+
+class BusDirection {
+  BusDirection({
+    required this.key,
+    required this.name,
+  });
+
+  String key;
+  String name;
+
+  factory BusDirection.fromJson(Map<String, dynamic> json) {
+    return BusDirection(
+      key: json['key'],
+      name: json['name'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'key': key,
+      'name': name,
+    };
   }
 }
 
 class BusRoutePattern {
-  final String key;
-  final String name;
-  final BusRouteDirection direction;
-  final String destination;
-  final BusDisplayInfo lineDisplayInfo;
-  final BusDisplayInfo timePointDisplayInfo;
-  final BusDisplayInfo busStopDisplayInfo;
-  final bool isDisplay;
-
   BusRoutePattern({
     required this.key,
-    required this.name,
-    required this.direction,
-    required this.destination,
-    required this.lineDisplayInfo,
-    required this.timePointDisplayInfo,
-    required this.busStopDisplayInfo,
     required this.isDisplay,
   });
+
+  String key;
+  bool isDisplay;
 
   factory BusRoutePattern.fromJson(Map<String, dynamic> json) {
     return BusRoutePattern(
       key: json['key'],
-      name: json['name'],
-      direction: BusRouteDirection.fromJson(json['direction']),
-      destination: json['destination'],
-      lineDisplayInfo: BusDisplayInfo.fromJson(json['lineDisplayInfo']),
-      timePointDisplayInfo:
-          BusDisplayInfo.fromJson(json['timePointDisplayInfo']),
-      busStopDisplayInfo: BusDisplayInfo.fromJson(json['busStopDisplayInfo']),
       isDisplay: json['isDisplay'],
     );
   }
@@ -81,72 +125,234 @@ class BusRoutePattern {
   Map<String, dynamic> toJson() {
     return {
       'key': key,
-      'name': name,
-      'direction': direction.toJson(),
-      'destination': destination,
-      'lineDisplayInfo': lineDisplayInfo.toJson(),
-      'timePointDisplayInfo': timePointDisplayInfo.toJson(),
-      'busStopDisplayInfo': busStopDisplayInfo.toJson(),
       'isDisplay': isDisplay,
     };
   }
+}
 
-  @override
-  toString() {
-    return 'BusRoutePattern {key: $key, name: $name, direction: $direction, destination: $destination, lineDisplayInfo: $lineDisplayInfo, timePointDisplayInfo: $timePointDisplayInfo, busStopDisplayInfo: $busStopDisplayInfo, isDisplay: $isDisplay}';
+class PatternPath {
+  String patternKey;
+  String directionKey;
+  List<PatternPoint> patternPoints;
+  List<SegmentPath> segmentPaths;
+
+  PatternPath(
+      {required this.patternKey,
+      required this.directionKey,
+      required this.patternPoints,
+      required this.segmentPaths});
+
+  factory PatternPath.fromJson(Map<String, dynamic> json) {
+    return PatternPath(
+      patternKey: json['patternKey'],
+      directionKey: json['directionKey'],
+      patternPoints: json['patternPoints']
+          .map<PatternPoint>((json) => PatternPoint.fromJson(json))
+          .toList(),
+      segmentPaths: json['segmentPaths']
+          .map<SegmentPath>((json) => SegmentPath.fromJson(json))
+          .toList(),
+    );
   }
 }
 
-class BusDisplayInfo {
-  final String color;
-  final int type;
-  final int symbol;
-  final int size;
+class PatternPoint {
+  String key;
+  double latitude;
+  double longitude;
+  Stop? stop;
 
-  BusDisplayInfo({
-    required this.color,
-    required this.type,
-    required this.symbol,
-    required this.size,
-  });
+  PatternPoint(
+      {required this.key,
+      required this.latitude,
+      required this.longitude,
+      required this.stop});
 
-  factory BusDisplayInfo.fromJson(Map<String, dynamic> json) {
-    return BusDisplayInfo(
-      color: json['color'],
-      type: json['type'],
-      symbol: json['symbol'],
-      size: json['size'],
+  factory PatternPoint.fromJson(Map<String, dynamic> json) {
+    return PatternPoint(
+      key: json['key'],
+      latitude: json['latitude'],
+      longitude: json['longitude'],
+      stop: json['stop'] != null ? Stop.fromJson(json['stop']) : null,
+    );
+  }
+}
+
+class Stop {
+  String name;
+  String stopCode;
+  int stopType;
+
+  Stop({required this.name, required this.stopCode, required this.stopType});
+
+  factory Stop.fromJson(Map<String, dynamic> json) {
+    return Stop(
+      name: json['name'],
+      stopCode: json['stopCode'],
+      stopType: json['stopType'],
+    );
+  }
+}
+
+class SegmentPath {
+  String key;
+
+  SegmentPath({required this.key});
+
+  factory SegmentPath.fromJson(Map<String, dynamic> json) {
+    return SegmentPath(
+      key: json['key'],
+    );
+  }
+}
+
+/*
+ [{
+    "routeKey": "10130313-2264-4211-9923-43d90e437cff",
+    "vehiclesByDirections": [{
+        "directionKey": "587389e2-3a18-4888-b9d1-a5b55877dd19",
+        "vehicles": [{
+            "key": "d5e6d64c-5177-44d0-8150-c4d4ca6b585e",
+            "name": "B0620",
+            "location": {
+                "lastGpsDate": "2024-01-17T09:38:40",
+                "latitude": 30.618002,
+                "longitude": -96.340834166666653,
+                "speed": 0.0,
+                "heading": 262.6400146484375
+            },
+            "directionKey": "587389e2-3a18-4888-b9d1-a5b55877dd19",
+            "directionName": "Asbury Water Tower",
+            "routeKey": "10130313-2264-4211-9923-43d90e437cff",
+            "passengerCapacity": 80,
+            "passengersOnboard": 26,
+            "amenities": [{
+                "name": "Air Conditioning",
+                "iconName": "snowflake"
+            }, {
+                "name": "Wheelchair Lift",
+                "iconName": "wheelchair"
+            }],
+            "isExtraTrip": false
+        }]
+    }, {
+        "directionKey": "46a44363-0622-45cc-a95e-f46de270a400",
+        "vehicles": [{
+            "key": "8c3a9a4f-1636-4a4b-8600-37299188b64d",
+            "name": "B2014",
+            "location": {
+                "lastGpsDate": "2024-01-17T09:38:42",
+                "latitude": 30.619685666666669,
+                "longitude": -96.338315666666674,
+                "speed": 1.685305379086137,
+                "heading": 49.639999389648438
+            },
+            "directionKey": "46a44363-0622-45cc-a95e-f46de270a400",
+            "directionName": "Becky Gates Center",
+            "routeKey": "10130313-2264-4211-9923-43d90e437cff",
+            "passengerCapacity": 85,
+            "passengersOnboard": 11,
+            "amenities": [{
+                "name": "Air Conditioning",
+                "iconName": "snowflake"
+            }, {
+                "name": "Wheelchair Lift",
+                "iconName": "wheelchair"
+            }],
+            "isExtraTrip": false
+        }]
+    }]
+}]
+ */
+
+class BusRouteVehicle {
+  String routeKey;
+  List<BusRouteVehicleDirection> vehiclesByDirections;
+
+  BusRouteVehicle({required this.routeKey, required this.vehiclesByDirections});
+
+  factory BusRouteVehicle.fromJson(Map<String, dynamic> json) {
+    return BusRouteVehicle(
+      routeKey: json['routeKey'],
+      vehiclesByDirections: json['vehiclesByDirections']
+          .map<BusRouteVehicleDirection>(
+              (json) => BusRouteVehicleDirection.fromJson(json))
+          .toList(),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'color': color,
-      'type': type,
-      'symbol': symbol,
-      'size': size,
+      'routeKey': routeKey,
+      'vehiclesByDirections':
+          vehiclesByDirections.map((e) => e.toJson()).toList(),
     };
-  }
-
-  @override
-  toString() {
-    return '{color: $color, type: $type, symbol: $symbol, size: $size}';
   }
 }
 
-class BusRouteDirection {
-  final String key;
-  final String name;
+class BusRouteVehicleDirection {
+  String directionKey;
+  List<BusRouteVehicleInfo> vehicles;
 
-  BusRouteDirection({
-    required this.key,
-    required this.name,
-  });
+  BusRouteVehicleDirection(
+      {required this.directionKey, required this.vehicles});
 
-  factory BusRouteDirection.fromJson(Map<String, dynamic> json) {
-    return BusRouteDirection(
+  factory BusRouteVehicleDirection.fromJson(Map<String, dynamic> json) {
+    return BusRouteVehicleDirection(
+      directionKey: json['directionKey'],
+      vehicles: json['vehicles']
+          .map<BusRouteVehicleInfo>(
+              (json) => BusRouteVehicleInfo.fromJson(json))
+          .toList(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'directionKey': directionKey,
+      'vehicles': vehicles.map((e) => e.toJson()).toList(),
+    };
+  }
+}
+
+class BusRouteVehicleInfo {
+  String key;
+  String name;
+  BusLocation location;
+  String directionKey;
+  String directionName;
+  String routeKey;
+  int passengerCapacity;
+  int passengersOnboard;
+  List<BusAmenity> amenities;
+  bool isExtraTrip;
+
+  BusRouteVehicleInfo(
+      {required this.key,
+      required this.name,
+      required this.location,
+      required this.directionKey,
+      required this.directionName,
+      required this.routeKey,
+      required this.passengerCapacity,
+      required this.passengersOnboard,
+      required this.amenities,
+      required this.isExtraTrip});
+
+  factory BusRouteVehicleInfo.fromJson(Map<String, dynamic> json) {
+    return BusRouteVehicleInfo(
       key: json['key'],
       name: json['name'],
+      location: BusLocation.fromJson(json['location']),
+      directionKey: json['directionKey'],
+      directionName: json['directionName'],
+      routeKey: json['routeKey'],
+      passengerCapacity: json['passengerCapacity'],
+      passengersOnboard: json['passengersOnboard'],
+      amenities: json['amenities']
+          .map<BusAmenity>((json) => BusAmenity.fromJson(json))
+          .toList(),
+      isExtraTrip: json['isExtraTrip'],
     );
   }
 
@@ -154,287 +360,70 @@ class BusRouteDirection {
     return {
       'key': key,
       'name': name,
+      'location': location.toJson(),
+      'directionKey': directionKey,
+      'directionName': directionName,
+      'routeKey': routeKey,
+      'passengerCapacity': passengerCapacity,
+      'passengersOnboard': passengersOnboard,
+      'amenities': amenities.map((e) => e.toJson()).toList(),
+      'isExtraTrip': isExtraTrip,
     };
-  }
-
-  @override
-  toString() {
-    return '{key: $key, name: $name}';
-  }
-}
-
-class BusPoint {
-  final String key;
-  final String name;
-  final String description;
-  final int rank;
-  final double longitude;
-  final double latitude;
-  final bool isStop;
-  final bool isTimePoint;
-  final BusStop? stop;
-  final int routeHeaderRank;
-  final double distanceToPreviousPoint;
-
-  BusPoint({
-    required this.key,
-    required this.name,
-    required this.description,
-    required this.rank,
-    required this.longitude,
-    required this.latitude,
-    required this.isStop,
-    required this.isTimePoint,
-    required this.stop,
-    required this.routeHeaderRank,
-    required this.distanceToPreviousPoint,
-  });
-
-  factory BusPoint.fromJson(Map<String, dynamic> json) {
-    return BusPoint(
-      key: json['key'],
-      name: json['name'],
-      description: json['description'],
-      rank: json['rank'],
-      longitude: json['longitude'],
-      latitude: json['latitude'],
-      isStop: json['isStop'],
-      isTimePoint: json['isTimePoint'],
-      stop: json['stop'] != null ? BusStop.fromJson(json['stop']) : null,
-      routeHeaderRank: json['routeHeaderRank'],
-      distanceToPreviousPoint: json['distanceToPreviousPoint'].toDouble(),
-    );
-  }
-
-  @override
-  toString() {
-    return 'BusPoint {key: $key, name: $name, description: $description, rank: $rank, longitude: $longitude, latitude: $latitude, isStop: $isStop, isTimePoint: $isTimePoint, stop: $stop, routeHeaderRank: $routeHeaderRank, distanceToPreviousPoint: $distanceToPreviousPoint}';
-  }
-}
-
-class BusStop {
-  final String key;
-  final String name;
-  final String stopCode;
-  final bool isTemporary;
-  final List<dynamic> attributes;
-
-  BusStop({
-    required this.key,
-    required this.name,
-    required this.stopCode,
-    required this.isTemporary,
-    required this.attributes,
-  });
-
-  factory BusStop.fromJson(Map<String, dynamic> json) {
-    return BusStop(
-      key: json['key'],
-      name: json['name'],
-      stopCode: json['stopCode'],
-      isTemporary: json['isTemporary'],
-      attributes: json['attributes'],
-    );
-  }
-
-  @override
-  toString() {
-    return 'BusStop {key: $key, name: $name, stopCode: $stopCode, isTemporary: $isTemporary, attributes: $attributes}';
-  }
-}
-
-class Bus {
-  final String key;
-  final String name;
-  final String vehicleType;
-  final BusLocation location;
-  final int passengerLoad;
-  final int passengerCapacity;
-  final String routeKey;
-  final String? patternKey;
-  final String? tripKey;
-  final BusStopDeparture nextStopDeparture;
-  final List<dynamic> attributes;
-  final List<dynamic> amenities;
-  final String routeName;
-  final String routeShortName;
-  final String patternName;
-  final String patternDestination;
-  final String patternColor;
-  final String directionName;
-  final bool isTripper;
-  final String? workItemKey;
-  final BusRouteStatus? routeStatus;
-  final BusOpStatus opStatus;
-
-  Bus({
-    required this.key,
-    required this.name,
-    required this.vehicleType,
-    required this.location,
-    required this.passengerLoad,
-    required this.passengerCapacity,
-    required this.routeKey,
-    required this.patternKey,
-    required this.tripKey,
-    required this.nextStopDeparture,
-    required this.attributes,
-    required this.amenities,
-    required this.routeName,
-    required this.routeShortName,
-    required this.patternName,
-    required this.patternDestination,
-    required this.patternColor,
-    required this.directionName,
-    required this.isTripper,
-    required this.workItemKey,
-    required this.routeStatus,
-    required this.opStatus,
-  });
-
-  factory Bus.fromJson(Map<String, dynamic> json) {
-    return Bus(
-      key: json['key'],
-      name: json['name'],
-      vehicleType: json['vehicleType'],
-      location: BusLocation.fromJson(json['location']),
-      passengerLoad: json['passengerLoad'],
-      passengerCapacity: json['passengerCapacity'],
-      routeKey: json['routeKey'],
-      patternKey: json['patternKey'],
-      tripKey: json['tripKey'],
-      nextStopDeparture:
-          BusStopDeparture.fromJson(json['nextStopDeparture'] ?? {}),
-      attributes: json['attributes'],
-      amenities: json['amenities'],
-      routeName: json['routeName'],
-      routeShortName: json['routeShortName'],
-      patternName: json['patternName'],
-      patternDestination: json['patternDestination'],
-      patternColor: json['patternColor'],
-      directionName: json['directionName'],
-      isTripper: json['isTripper'],
-      workItemKey: json['workItemKey'],
-      routeStatus: json['routeStatus'] != null
-          ? BusRouteStatus.fromJson(json['routeStatus'])
-          : null,
-      opStatus: BusOpStatus.fromJson(json['opStatus']),
-    );
   }
 }
 
 class BusLocation {
-  final double latitude;
-  final double longitude;
-  final double speed;
-  final double heading;
-  final DateTime lastGpsDate;
+  DateTime lastGpsDate;
+  double latitude;
+  double longitude;
+  double speed;
+  double heading;
 
-  BusLocation({
-    required this.latitude,
-    required this.longitude,
-    required this.speed,
-    required this.heading,
-    required this.lastGpsDate,
-  });
+  BusLocation(
+      {required this.lastGpsDate,
+      required this.latitude,
+      required this.longitude,
+      required this.speed,
+      required this.heading});
 
   factory BusLocation.fromJson(Map<String, dynamic> json) {
     return BusLocation(
+      lastGpsDate: DateTime.parse(json['lastGpsDate']),
       latitude: json['latitude'],
       longitude: json['longitude'],
-      speed: json['speed'].toDouble(),
-      heading: json['heading'].toDouble(),
-      lastGpsDate: DateTime.parse(json['lastGpsDate']),
+      speed: json['speed'],
+      heading: json['heading'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'lastGpsDate': lastGpsDate.toIso8601String(),
+      'latitude': latitude,
+      'longitude': longitude,
+      'speed': speed,
+      'heading': heading,
+    };
   }
 }
 
-class BusStopDeparture {
-  final String? stopKey;
-  final String stopCode;
-  final String? tripPointKey;
-  final String? patternPointKey;
-  final DateTime? scheduledDeparture;
-  final DateTime? estimatedDeparture;
-  final bool hasDeparted;
-  final String stopName;
+class BusAmenity {
+  String name;
+  String iconName;
 
-  BusStopDeparture({
-    required this.stopKey,
-    required this.stopCode,
-    required this.tripPointKey,
-    required this.patternPointKey,
-    required this.scheduledDeparture,
-    required this.estimatedDeparture,
-    required this.hasDeparted,
-    required this.stopName,
-  });
+  BusAmenity({required this.name, required this.iconName});
 
-  factory BusStopDeparture.fromJson(Map<String, dynamic> json) {
-    return BusStopDeparture(
-      stopKey: json['stopKey'],
-      stopCode: json['stopCode'] ?? '',
-      tripPointKey: json['tripPointKey'],
-      patternPointKey: json['patternPointKey'],
-      scheduledDeparture: json['scheduledDeparture'] != null
-          ? DateTime.parse(json['scheduledDeparture'])
-          : null,
-      estimatedDeparture: json['estimatedDeparture'] != null
-          ? DateTime.parse(json['estimatedDeparture'])
-          : null,
-      hasDeparted: json['hasDeparted'] ?? false,
-      stopName: json['stopName'] ?? '',
+  factory BusAmenity.fromJson(Map<String, dynamic> json) {
+    return BusAmenity(
+      name: json['name'],
+      iconName: json['iconName'],
     );
   }
-}
 
-class BusRouteStatus {
-  final String status;
-  final String color;
-
-  BusRouteStatus({
-    required this.status,
-    required this.color,
-  });
-
-  factory BusRouteStatus.fromJson(Map<String, dynamic> json) {
-    return BusRouteStatus(
-      status: json['status'],
-      color: json['color'],
-    );
-  }
-}
-
-class BusOpStatus {
-  final String status;
-  final String color;
-
-  BusOpStatus({
-    required this.status,
-    required this.color,
-  });
-
-  factory BusOpStatus.fromJson(Map<String, dynamic> json) {
-    return BusOpStatus(
-      status: json['status'],
-      color: json['color'],
-    );
-  }
-}
-
-class BusTimeTable {
-  final String destination;
-  final String html;
-
-  BusTimeTable({
-    required this.destination,
-    required this.html,
-  });
-
-  factory BusTimeTable.fromJson(Map<String, dynamic> json) {
-    return BusTimeTable(
-      destination: json['destination'],
-      html: json['html'],
-    );
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'iconName': iconName,
+    };
   }
 }

@@ -9,9 +9,9 @@ class AppleMaps extends StatelessWidget {
   final Set<Circle> stopMarkers = {};
   final Color routeColor;
   final Function(AppleMapController) onMapCreated;
-  final List<Bus> buses;
+  final List<BusRouteVehicleInfo> buses;
 
-  AppleMaps(List<BusPoint> bPoints,
+  AppleMaps(List<PatternPoint> bPoints,
       {super.key,
       required this.routeColor,
       required this.onMapCreated,
@@ -24,8 +24,9 @@ class AppleMaps extends StatelessWidget {
               points:
                   bPoints.map((e) => LatLng(e.latitude, e.longitude)).toList())
         } {
+    // print(bPoints);
     for (final point in bPoints) {
-      if (point.isStop) {
+      if (point.stop != null) {
         stopMarkers.add(Circle(
             circleId: CircleId(point.key),
             center: LatLng(point.latitude, point.longitude),
@@ -53,9 +54,9 @@ class AppleMaps extends StatelessWidget {
                 annotationId: AnnotationId(bus.key),
                 infoWindow: InfoWindow(
                     title:
-                        "${AppLocalizations.of(context)!.nextStop}: ${bus.nextStopDeparture.stopName}",
+                        "${AppLocalizations.of(context)!.nextStop}: ${bus.directionName}",
                     snippet: AppLocalizations.of(context)!.percentFull(
-                        "${(bus.passengerLoad.toDouble() / (bus.passengerCapacity != 0 ? bus.passengerCapacity.toDouble() : 1.0) * 100).round()}%")),
+                        "${(bus.passengersOnboard.toDouble() / (bus.passengerCapacity != 0 ? bus.passengerCapacity.toDouble() : 1.0) * 100).round()}%")),
                 position: LatLng(bus.location.latitude, bus.location.longitude),
                 anchor: const Offset(0.5, 0.5),
                 icon: img,

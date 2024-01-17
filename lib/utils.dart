@@ -16,7 +16,7 @@ Color hexToColor(String hexString) {
   return const Color.fromARGB(0, 0, 0, 0);
 }
 
-LatLngBounds calculateLatLngFromBusPoints(List<BusPoint> bPoints) {
+LatLngBounds calculateLatLngFromBusPoints(List<PatternPoint> bPoints) {
   double minLat = 90;
   double maxLat = -90;
   double minLng = 180;
