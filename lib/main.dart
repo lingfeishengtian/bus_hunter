@@ -160,9 +160,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   Future<void> startBusPolling({String withMessage = ''}) async {
-    setState(() {
-      isLoading = true;
-    });
+    currentBuses = [];
+    timer?.cancel();
     mapController?.animateCamera(CameraUpdate.newLatLngBounds(
         calculateLatLngFromBusPoints(currentPatterns), 70));
     logger.t('Starting bus polling for route ${currentRouteKey}');
@@ -170,6 +169,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
     Future<void> runPolling() async {
       if (complete) {
+        print("Polling bus ${currentRouteKey}");
         complete = false;
         await pollBus(currentRouteKey ?? "")
             .whenComplete(() => complete = true);
@@ -177,12 +177,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     }
 
     await runPolling();
-    timer?.cancel();
     timer = Timer.periodic(_waitDuration, (Timer t) {
       runPolling();
-    });
-    setState(() {
-      isLoading = false;
     });
   }
 
@@ -195,44 +191,39 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   //   await startBusPolling();
   // }
 
+  void routeSelected(route) async {
+    setState(() {
+      isLoading = true;
+    });
+
+    currentRouteKey = route;
+    // TODO: Clean this up later
+    currentPatterns = (await getPatternPaths([
+      (routes.firstWhereOrNull((element) => element.key == route) ??
+              routes.first)
+          .key
+    ]))
+        .map((e) => e.patternPoints)
+        .expand((element) => element)
+        .toList();
+    await startBusPolling();
+
+    setState(() {
+      isLoading = false;
+    });
+  }
+
   Widget _buildPanel(ScrollController sc) {
     final twoByTwoBusRouteWidgets = [];
     for (int i = 0; i < routes.length; i += 2) {
       twoByTwoBusRouteWidgets.add(Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          BusRouteWidget(
-              route: routes[i],
-              onRouteSelected: (route) async {
-                setState(() {
-                  isLoading = true;
-                });
-
-                // TODO: Clean this up later
-                currentPatterns = (await getPatternPaths([
-                  (routes.firstWhereOrNull((element) => element.key == route) ??
-                          routes.first)
-                      .key
-                ]))
-                    .map((e) => e.patternPoints)
-                    .expand((element) => element)
-                    .toList();
-                await startBusPolling();
-
-                setState(() {
-                  isLoading = false;
-                  currentRouteKey = route;
-                });
-              }),
+          BusRouteWidget(route: routes[i], onRouteSelected: routeSelected),
           if (i + 1 < routes.length) const SizedBox(width: 20),
           if (i + 1 < routes.length)
             BusRouteWidget(
-                route: routes[i + 1],
-                onRouteSelected: (route) {
-                  setState(() {
-                    currentRouteKey = route;
-                  });
-                }),
+                route: routes[i + 1], onRouteSelected: routeSelected),
         ],
       ));
       twoByTwoBusRouteWidgets.add(const SizedBox(height: 20));
