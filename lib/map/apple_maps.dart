@@ -1,3 +1,4 @@
+import 'package:bus_hunter/api/bus_api.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:apple_maps_flutter/apple_maps_flutter.dart';
 import 'package:bus_hunter/api/bus_obj.dart';
@@ -6,17 +7,21 @@ import 'package:flutter/material.dart';
 
 class AppleMaps extends StatelessWidget {
   final Set<Polyline> currRoute;
-  final Set<Circle> stopMarkers = {};
   final Color routeColor;
   final Function(AppleMapController) onMapCreated;
   final List<BusRouteVehicleInfo> buses;
+  final List<PatternPoint> bPoints;
+  final NextDepartureTime? nextDepartureTime;
+  final Function(String) onBusStopTap;
 
-  AppleMaps(List<PatternPoint> bPoints,
-      {super.key,
-      required this.routeColor,
-      required this.onMapCreated,
-      required this.buses})
-      : currRoute = {
+  AppleMaps(
+    this.bPoints, {
+    required this.routeColor,
+    required this.onMapCreated,
+    required this.buses,
+    required this.onBusStopTap,
+    this.nextDepartureTime,
+  }) : currRoute = {
           Polyline(
               polylineId: PolylineId("a"),
               color: routeColor,
@@ -25,20 +30,37 @@ class AppleMaps extends StatelessWidget {
                   bPoints.map((e) => LatLng(e.latitude, e.longitude)).toList())
         } {
     // print(bPoints);
-    for (final point in bPoints) {
-      if (point.stop != null) {
-        stopMarkers.add(Circle(
-            circleId: CircleId(point.key),
-            center: LatLng(point.latitude, point.longitude),
-            radius: 10,
-            fillColor: Colors.white,
-            strokeColor: Colors.white));
-      }
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final Set<Annotation> stopMarkers = {};
+    for (final point in bPoints) {
+      if (point.stop != null) {
+        final departInfo = nextDepartureTime?.routeDirectionTimes
+            .firstWhere((element) => element.nextDeparts.isNotEmpty)
+            .nextDeparts
+            .firstOrNull;
+        final time = departInfo?.estimatedDepartTimeUtc ??
+            departInfo?.scheduledDepartTimeUtc;
+        stopMarkers.add(Annotation(
+          onTap: () {
+            onBusStopTap(point.stop?.stopCode ?? "");
+          },
+          annotationId: AnnotationId(point.key),
+          position: LatLng(point.latitude, point.longitude),
+          infoWindow: InfoWindow(
+              title: point.stop!.name,
+              snippet: nextDepartureTime != null && time != null
+                  ? AppLocalizations.of(context)!.minutesTillArrival(
+                      time.difference(DateTime.now()).inMinutes.toString())
+                  : AppLocalizations.of(context)!.loading),
+          anchor: const Offset(0.5, 0.5),
+          visible: true,
+          icon: img_bus_stop,
+        ));
+      }
+    }
     return AppleMap(
         onMapCreated: onMapCreated,
         initialCameraPosition: const CameraPosition(
@@ -48,9 +70,10 @@ class AppleMaps extends StatelessWidget {
         myLocationEnabled: true,
         rotateGesturesEnabled: false,
         polylines: currRoute,
-        circles: stopMarkers,
+        // circles: stopMarkers,
         annotations: buses
             .map((bus) => Annotation(
+                // zIndex: 1000,
                 annotationId: AnnotationId(bus.key),
                 infoWindow: InfoWindow(
                     title:
@@ -61,6 +84,7 @@ class AppleMaps extends StatelessWidget {
                 anchor: const Offset(0.5, 0.5),
                 icon: img,
                 rotation: bus.location.heading))
-            .toSet());
+            .toSet()
+            .union(stopMarkers));
   }
 }

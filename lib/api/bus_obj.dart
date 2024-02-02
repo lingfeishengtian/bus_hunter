@@ -427,3 +427,111 @@ class BusAmenity {
     };
   }
 }
+
+/*
+{
+    "stopCode": "0016",
+    "routeDirectionTimes": [
+        {
+            "routeKey": "c4b8bcfe-e378-4335-9839-801b3296f80d",
+            "directionKey": "56f01e6b-3c9d-45f0-8e31-5df18c901332",
+            "nextDeparts": [
+                {
+                    "estimatedDepartTimeUtc": "2024-02-01T20:53:00Z",
+                    "scheduledDepartTimeUtc": "2024-02-01T20:58:00Z",
+                    "isOffRoute": false
+                },
+                {
+                    "estimatedDepartTimeUtc": "2024-02-01T21:07:00Z",
+                    "scheduledDepartTimeUtc": "2024-02-01T21:13:00Z",
+                    "isOffRoute": false
+                },
+                {
+                    "estimatedDepartTimeUtc": "2024-02-01T21:28:00Z",
+                    "scheduledDepartTimeUtc": "2024-02-01T21:28:00Z",
+                    "isOffRoute": false
+                }
+            ],
+            "frequencyInfo": null
+        }
+    ],
+    "amenities": [
+        {
+            "name": "Bicycle Rack",
+            "iconName": "bicycle"
+        },
+        {
+            "name": "Wheelchair Accessible",
+            "iconName": "wheelchair"
+        }
+    ]
+}
+*/
+
+class NextDepartureTime {
+  String stopCode;
+  List<RouteDirectionTime> routeDirectionTimes;
+  List<BusAmenity> amenities;
+
+  NextDepartureTime(
+      {required this.stopCode,
+      required this.routeDirectionTimes,
+      required this.amenities});
+
+  factory NextDepartureTime.fromJson(Map<String, dynamic> json) {
+    return NextDepartureTime(
+      stopCode: json['stopCode'],
+      routeDirectionTimes: json['routeDirectionTimes']
+          .map<RouteDirectionTime>((json) => RouteDirectionTime.fromJson(json))
+          .toList(),
+      amenities: json['amenities']
+          .map<BusAmenity>((json) => BusAmenity.fromJson(json))
+          .toList(),
+    );
+  }
+}
+
+class RouteDirectionTime {
+  String routeKey;
+  String directionKey;
+  List<NextDepart> nextDeparts;
+  dynamic frequencyInfo;
+
+  RouteDirectionTime(
+      {required this.routeKey,
+      required this.directionKey,
+      required this.nextDeparts,
+      required this.frequencyInfo});
+
+  factory RouteDirectionTime.fromJson(Map<String, dynamic> json) {
+    return RouteDirectionTime(
+      routeKey: json['routeKey'],
+      directionKey: json['directionKey'],
+      nextDeparts: json['nextDeparts']
+          .map<NextDepart>((json) => NextDepart.fromJson(json))
+          .toList(),
+      frequencyInfo: json['frequencyInfo'],
+    );
+  }
+}
+
+class NextDepart {
+  DateTime? estimatedDepartTimeUtc;
+  DateTime? scheduledDepartTimeUtc;
+  bool isOffRoute;
+
+  NextDepart(
+      {required this.estimatedDepartTimeUtc,
+      required this.scheduledDepartTimeUtc,
+      required this.isOffRoute});
+
+  factory NextDepart.fromJson(Map<String, dynamic> json) {
+    return NextDepart(
+      estimatedDepartTimeUtc:
+          DateTime.tryParse(json['estimatedDepartTimeUtc'] ?? ""),
+      scheduledDepartTimeUtc:
+          DateTime.tryParse(json['scheduledDepartTimeUtc'] ?? ""),
+      isOffRoute: json['isOffRoute'],
+    );
+  }
+}

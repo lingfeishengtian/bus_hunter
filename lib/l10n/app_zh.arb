@@ -11,5 +11,8 @@
   "timetable": "时间表",
   "showExpiredTimes": "显示过期时间",
   "date": "日期",
-  "noBusServiceFound": "没有找到校车服务"
+  "noBusServiceFound": "没有找到校车服务",
+  "loading": "正在加载...",
+  "minutes": "分钟",
+  "minutesTillArrival": "{minutes}分钟后到达"
 }

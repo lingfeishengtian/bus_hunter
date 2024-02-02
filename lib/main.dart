@@ -74,11 +74,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       setState(() {
         logger.i('App resumed');
-        // if (routeStateManager.routeSelected) {
-        //   timer?.cancel();
-        //   isLoading = true;
-        //   rebuildConnectionAndStartPolling();
-        // }
       });
     }
   }
@@ -95,33 +90,12 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       });
       routes = await getRoutes();
       // TODO: Initialize something here
-      // routeStateManager.changeRouteGroup(
-      //     routeStateManager.currRouteGroup, setCurrentStateBasedOnRouteStatus);
       setState(() {
         isLoading = false;
       });
     });
     WidgetsBinding.instance.addObserver(this);
   }
-
-  // void setCurrentStateBasedOnRouteStatus(RouteStateManagerLoadingStat status) {
-  //   switch (status) {
-  //     case RouteStateManagerLoadingStat.loading:
-  //       setState(() {
-  //         loadingStatus = "";
-  //       });
-  //       break;
-  //     case RouteStateManagerLoadingStat.loadingMore:
-  //       setState(() {
-  //         loadingStatus = AppLocalizations.of(context)!.busRouteLoadingStatus;
-  //       });
-  //       break;
-  //     case RouteStateManagerLoadingStat.done:
-  //       setState(() {
-  //         loadingStatus = null;
-  //       });
-  //   }
-  // }
 
   @override
   void dispose() {
@@ -171,8 +145,14 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       if (complete) {
         print("Polling bus ${currentRouteKey}");
         complete = false;
-        await pollBus(currentRouteKey ?? "")
-            .whenComplete(() => complete = true);
+        if (stopCode.isNotEmpty) {
+          getNextDepartureTime(stopCode, currentRouteKey ?? "",
+                  currentPatternPaths.map((e) => e.directionKey).toList())
+              .then((value) => setState(() {
+                    nextDepart = value;
+                  }));
+        }
+        pollBus(currentRouteKey ?? "").whenComplete(() => complete = true);
       }
     }
 
@@ -184,13 +164,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   String? currentRouteKey;
 
-  // void routeSelected(String routeKey) async {
-  //   routeStateManager.changeRoute(routeKey);
-  //   logger.t('Selected route $routeKey');
-  //   panelController.close();
-  //   await startBusPolling();
-  // }
-
   void routeSelected(route) async {
     setState(() {
       isLoading = true;
@@ -198,14 +171,14 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
     currentRouteKey = route;
     // TODO: Clean this up later
-    currentPatterns = (await getPatternPaths([
+    currentPatternPaths = (await getPatternPaths([
       (routes.firstWhereOrNull((element) => element.key == route) ??
               routes.first)
           .key
-    ]))
-        .map((e) => e.patternPoints)
-        .expand((element) => element)
-        .toList();
+    ]));
+    // .map((e) => e.patternPoints)
+    // .expand((element) => element)
+    // .toList();
     await startBusPolling();
 
     setState(() {
@@ -228,19 +201,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       ));
       twoByTwoBusRouteWidgets.add(const SizedBox(height: 20));
     }
-
-    // getGroupNameFromIndex(int index) {
-    //   if (index == RouteStateManager.favoritesIndex) {
-    //     return AppLocalizations.of(context)!.favorites;
-    //   } else {
-    //     return [
-    //       AppLocalizations.of(context)!.onCampus,
-    //       AppLocalizations.of(context)!.offCampus,
-    //       AppLocalizations.of(context)!.gameday
-    //     ][index];
-    //   }
-    // }
-
     return MediaQuery.removePadding(
         context: context,
         removeTop: true,
@@ -254,22 +214,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                 children: [
                   Text(AppLocalizations.of(context)!.busRouteSelectionMenuTitle,
                       style: Theme.of(context).textTheme.displaySmall),
-                  // DropdownButton(
-                  //     borderRadius: BorderRadius.circular(10),
-                  //     items: routeStateManager.groupIndices
-                  //         .map((group) => DropdownMenuItem(
-                  //             key: Key(getGroupNameFromIndex(group)),
-                  //             value: group,
-                  //             child: Text(getGroupNameFromIndex(group))))
-                  //         .toList(),
-                  //     value: routeStateManager.currRouteGroup,
-                  //     onChanged: (value) {
-                  //       setState(() {
-                  //         timer?.cancel();
-                  //       });
-                  //       routeStateManager.changeRouteGroup(
-                  //           value, setCurrentStateBasedOnRouteStatus);
-                  //     })
                 ],
               ),
               const SizedBox(height: 20),
@@ -286,8 +230,17 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   double _panelHeightOpen = 0;
   final double _panelHeightClosed = 95.0;
 
-  var currentPatterns = <PatternPoint>[];
+  var currentPatternPaths = <PatternPath>[];
   var currentBuses = <BusRouteVehicleInfo>[];
+  var stopCode = "";
+  NextDepartureTime? nextDepart;
+
+  List<PatternPoint> get currentPatterns {
+    return currentPatternPaths
+        .map((e) => e.patternPoints)
+        .expand((element) => element)
+        .toList();
+  }
 
   //TODO: Add button to slide up bottom panel programmatically
   @override
@@ -337,16 +290,33 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             panelBuilder: (sc) => _buildPanel(sc),
             color: Theme.of(context).colorScheme.surface,
             controller: panelController,
-            body: AppleMaps(currentPatterns,
-                buses: currentBuses,
-                routeColor: hexToColor((routes.firstWhereOrNull(
-                            (element) => element.key == currentRouteKey) ??
-                        routes.first)
-                    .directionList
-                    .first
-                    .lineColor), onMapCreated: (AppleMapController controller) {
-              mapController = controller;
-            }),
+            body: AppleMaps(
+              currentPatterns,
+              buses: currentBuses,
+              routeColor: hexToColor((routes.firstWhereOrNull(
+                          (element) => element.key == currentRouteKey) ??
+                      routes.first)
+                  .directionList
+                  .first
+                  .lineColor),
+              onMapCreated: (AppleMapController controller) {
+                mapController = controller;
+              },
+              onBusStopTap: (p0) {
+                stopCode = p0;
+                setState(() {
+                  nextDepart = null;
+                });
+                getNextDepartureTime(
+                  p0,
+                  currentRouteKey ?? "",
+                  currentPatternPaths.map((e) => e.directionKey).toList(),
+                ).then((value) => setState(() {
+                      nextDepart = value;
+                    }));
+              },
+              nextDepartureTime: nextDepart,
+            ),
             borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(18.0),
                 topRight: Radius.circular(18.0)),

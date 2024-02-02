@@ -1,5 +1,6 @@
 import 'package:apple_maps_flutter/apple_maps_flutter.dart';
 import 'package:bus_hunter/api/bus_obj.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -42,9 +43,15 @@ LatLngBounds calculateLatLngFromBusPoints(List<PatternPoint> bPoints) {
 }
 
 BitmapDescriptor img = BitmapDescriptor.defaultAnnotation;
+BitmapDescriptor img_bus_stop = BitmapDescriptor.defaultAnnotation;
+
 Future<void> initBusDirectionIcon() async {
   img = BitmapDescriptor.fromBytes(
       (await rootBundle.load("assets/icons/arrow_bus.png"))
           .buffer
           .asUint8List());
+
+  img_bus_stop = await BitmapDescriptor.fromAssetImage(
+      const ImageConfiguration(size: Size(10, 10)),
+      "assets/icons/bus_stop.png");
 }

@@ -50,5 +50,13 @@
   "noBusServiceFound": "No bus service found",
   "@noBusServiceFound": {
     "description": "No bus service found message"
+  },
+  "loading": "Loading...",
+  "@loading": {
+    "description": "Loading message"
+  },
+  "minutesTillArrival": "{minutes} min until arrival",
+  "@minutesTillArrival": {
+    "description": "Minutes till arrival"
   }
 }
