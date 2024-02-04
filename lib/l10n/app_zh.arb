@@ -14,5 +14,6 @@
   "noBusServiceFound": "没有找到校车服务",
   "loading": "正在加载...",
   "minutes": "分钟",
-  "minutesTillArrival": "{minutes}分钟后到达"
+  "minutesTillArrival": "{minutes}分钟后到达",
+  "noService": "没有服务"
 }

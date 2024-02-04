@@ -195,13 +195,22 @@ class Stop {
 }
 
 class SegmentPath {
-  String key;
+  String serviceInterruptionKey;
+  String patternKey;
+  List<PatternPoint> patternPoints;
 
-  SegmentPath({required this.key});
+  SegmentPath(
+      {required this.serviceInterruptionKey,
+      required this.patternKey,
+      required this.patternPoints});
 
   factory SegmentPath.fromJson(Map<String, dynamic> json) {
     return SegmentPath(
-      key: json['key'],
+      serviceInterruptionKey: json['serviceInterruptionKey'],
+      patternKey: json['patternKey'],
+      patternPoints: json['patternPoints']
+          .map<PatternPoint>((json) => PatternPoint.fromJson(json))
+          .toList(),
     );
   }
 }

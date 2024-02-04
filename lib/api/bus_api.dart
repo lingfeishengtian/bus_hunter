@@ -56,7 +56,7 @@ Future<List<PatternPath>> getPatternPaths(List<String> routeKeys) async {
           body: {for (var (i, p) in routeKeys.indexed) "routeKeys[$i]": p})
       .then((value) {
     print("called");
-    print(value);
+    print(value.body);
     paths.addAll((jsonDecode(value.body) as List<dynamic>)
         .map((e) => PatternPathReturn.fromJson(e).patternPaths)
         .expand((element) => element));

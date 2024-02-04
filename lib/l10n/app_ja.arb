@@ -13,5 +13,6 @@
   "date": "日付入力",
   "noBusServiceFound": "バスの平常運転が見つかりませんでした",
   "loading": "ロード中...",
-  "minutesTillArrival": "{minutes}分後に到着します"
+  "minutesTillArrival": "{minutes}分後に到着します",
+  "noService": "サービスなし"
 }

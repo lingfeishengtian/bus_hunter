@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ffi';
 import 'package:apple_maps_flutter/apple_maps_flutter.dart';
 import 'package:bus_hunter/api/bus_api.dart';
 import 'package:bus_hunter/api/bus_obj.dart';
@@ -10,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:logger/logger.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 
 void main() {
@@ -28,6 +30,9 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    SharedPreferences.getInstance().catchError((e) {
+      logger.e('Error getting shared preferences: $e');
+    }).then((value) => prefs = value);
     return MaterialApp(
       title: 'Flutter Demo',
       localizationsDelegates: const [
@@ -89,6 +94,17 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         isLoading = true;
       });
       routes = await getRoutes();
+      final firstFavoriteRoute = routes.firstWhereOrNull((element) =>
+          favorites.firstOrNull != null
+              ? (element.key == favorites.first)
+              : false);
+      if (favorites.isNotEmpty && firstFavoriteRoute == null) {
+        favorites = [];
+      }
+      if (firstFavoriteRoute != null) {
+        print(firstFavoriteRoute.key);
+        await routeSelected(firstFavoriteRoute.key);
+      }
       // TODO: Initialize something here
       setState(() {
         isLoading = false;
@@ -164,10 +180,11 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   String? currentRouteKey;
 
-  void routeSelected(route) async {
+  Future<void> routeSelected(route) async {
     setState(() {
       isLoading = true;
     });
+    if (panelController.isAttached) panelController.close();
 
     currentRouteKey = route;
     // TODO: Clean this up later
@@ -187,16 +204,29 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   Widget _buildPanel(ScrollController sc) {
+    final sortedRoutes = List.from(routes);
+    sortedRoutes.sort((a, b) {
+      final favContainsA = favorites.contains(a.key);
+      final favContainsB = favorites.contains(b.key);
+      if (favContainsA && !favContainsB) {
+        return -1;
+      } else if (!favContainsA && favContainsB) {
+        return 1;
+      } else {
+        return routes.indexOf(a).compareTo(routes.indexOf(b));
+      }
+    });
     final twoByTwoBusRouteWidgets = [];
-    for (int i = 0; i < routes.length; i += 2) {
+    for (int i = 0; i < sortedRoutes.length; i += 2) {
       twoByTwoBusRouteWidgets.add(Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          BusRouteWidget(route: routes[i], onRouteSelected: routeSelected),
-          if (i + 1 < routes.length) const SizedBox(width: 20),
-          if (i + 1 < routes.length)
+          BusRouteWidget(
+              route: sortedRoutes[i], onRouteSelected: routeSelected),
+          if (i + 1 < sortedRoutes.length) const SizedBox(width: 20),
+          if (i + 1 < sortedRoutes.length)
             BusRouteWidget(
-                route: routes[i + 1], onRouteSelected: routeSelected),
+                route: sortedRoutes[i + 1], onRouteSelected: routeSelected),
         ],
       ));
       twoByTwoBusRouteWidgets.add(const SizedBox(height: 20));
@@ -240,6 +270,23 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         .map((e) => e.patternPoints)
         .expand((element) => element)
         .toList();
+  }
+
+  List<List<PatternPoint>> get currentSegmentPatterns {
+    return currentPatternPaths
+        .map((e) => e.segmentPaths
+            .map((e) => e.patternPoints)
+            .expand((element) => element)
+            .toList())
+        .toList();
+  }
+
+  List<String> get favorites {
+    return prefs.getStringList("Favorites") ?? [];
+  }
+
+  set favorites(List<String> value) {
+    prefs.setStringList("Favorites", value);
   }
 
   //TODO: Add button to slide up bottom panel programmatically
@@ -292,6 +339,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             controller: panelController,
             body: AppleMaps(
               currentPatterns,
+              currentSegmentPatterns,
               buses: currentBuses,
               routeColor: hexToColor((routes.firstWhereOrNull(
                           (element) => element.key == currentRouteKey) ??
@@ -325,63 +373,72 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                   _initFabHeight;
             }),
           ),
-          // routeStateManager.routeSelected
-          //     ? Positioned(
-          //         right: 20.0,
-          //         bottom: _fabHeight,
-          //         child: Row(children: [
-          //           FloatingActionButton(
-          //             heroTag: 'timetable',
-          //             onPressed: () {
-          //               setState(() {
-          //                 isLoading = true;
-          //                 timer?.cancel();
-          //               });
-          //               Navigator.of(context)
-          //                   .push(PageRouteBuilder(
-          //                 opaque: false,
-          //                 pageBuilder: (context, _, __) {
-          //                   return TimeTable(
-          //                       routeShortName:
-          //                           routeStateManager.currBusRoute.shortName);
-          //                 },
-          //               ))
-          //                   .then((value) {
-          //                 setState(() {
-          //                   rebuildConnectionAndStartPolling();
-          //                 });
-          //               });
-          //             },
-          //             backgroundColor: Theme.of(context).colorScheme.surface,
-          //             child: Icon(
-          //               Icons.calendar_month_outlined,
-          //               color: Theme.of(context).textTheme.titleSmall!.color,
-          //             ),
-          //           ),
-          //           const SizedBox(width: 10),
-          //           FloatingActionButton(
-          //             heroTag: 'favorite',
-          //             onPressed: () {
-          //               setState(() {
-          //                 if (routeStateManager.isCurrentRouteFavorite()) {
-          //                   routeStateManager
-          //                       .unFavorite(setCurrentStateBasedOnRouteStatus);
-          //                 } else {
-          //                   routeStateManager.favorite();
-          //                 }
-          //               });
-          //             },
-          //             backgroundColor: Theme.of(context).colorScheme.surface,
-          //             child: Icon(
-          //               routeStateManager.isCurrentRouteFavorite()
-          //                   ? Icons.star
-          //                   : Icons.star_border_outlined,
-          //               color: Theme.of(context).textTheme.titleSmall!.color,
-          //             ),
-          //           ),
-          //         ]),
-          //       )
-          //     : Container(),
+          currentRouteKey != null
+              ? Positioned(
+                  right: 20.0,
+                  bottom: _fabHeight,
+                  child: Row(children: [
+                    // FloatingActionButton(
+                    //   heroTag: 'timetable',
+                    //   onPressed: () {
+                    //     setState(() {
+                    //       isLoading = true;
+                    //       timer?.cancel();
+                    //     });
+                    //     Navigator.of(context)
+                    //         .push(PageRouteBuilder(
+                    //       opaque: false,
+                    //       pageBuilder: (context, _, __) {
+                    //         return TimeTable(
+                    //             routeShortName:
+                    //                 routeStateManager.currBusRoute.shortName);
+                    //       },
+                    //     ))
+                    //         .then((value) {
+                    //       setState(() {
+                    //         rebuildConnectionAndStartPolling();
+                    //       });
+                    //     });
+                    //   },
+                    //   backgroundColor: Theme.of(context).colorScheme.surface,
+                    //   child: Icon(
+                    //     Icons.calendar_month_outlined,
+                    //     color: Theme.of(context).textTheme.titleSmall!.color,
+                    //   ),
+                    // ),
+                    const SizedBox(width: 10),
+                    FloatingActionButton(
+                      heroTag: 'favorite',
+                      onPressed: () {
+                        // setState(() {
+                        //   if (routeStateManager.isCurrentRouteFavorite()) {
+                        //     routeStateManager
+                        //         .unFavorite(setCurrentStateBasedOnRouteStatus);
+                        //   } else {
+                        //     routeStateManager.favorite();
+                        //   }
+                        // });
+                        setState(() {
+                          if (favorites.contains(currentRouteKey)) {
+                            favorites = favorites
+                                .where((element) => element != currentRouteKey)
+                                .toList();
+                          } else {
+                            favorites = [currentRouteKey!, ...favorites];
+                          }
+                        });
+                      },
+                      backgroundColor: Theme.of(context).colorScheme.surface,
+                      child: Icon(
+                        favorites.contains(currentRouteKey)
+                            ? Icons.star
+                            : Icons.star_border_outlined,
+                        color: Theme.of(context).textTheme.titleSmall!.color,
+                      ),
+                    ),
+                  ]),
+                )
+              : Container(),
         ]),
       ),
       if (routes.isEmpty || isLoading == true || loadingStatus == "")
